@@ -1,0 +1,9 @@
+[submodule "src/freebayes"]
+	path = src/freebayes
+	url = git@github.com:ekg/freebayes.git
+[submodule "src/samtools"]
+	path = src/samtools
+	url = git@github.com:samtools/samtools.git
+[submodule "src/bowtie2"]
+	path = src/bowtie2
+	url = git@github.com:BenLangmead/bowtie2.git
