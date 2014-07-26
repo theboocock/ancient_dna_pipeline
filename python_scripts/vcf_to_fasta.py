@@ -11,7 +11,7 @@
 import os,re,vcf,argparse
 from pyfasta import Fasta
 
-def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species):
+def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
     # First part is to get the fasta sequence then atke each position 
     # and then alter the reference as necessary for each sample.
     # Because everyone will have different SNPs.
@@ -50,9 +50,10 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species):
                         gt = real_gt[i]
                         sample_fasta[sample][position] = gt
                     elif(len(real_gt) > len(ref) and i != 0):
-                        gt = list(real_gt[i])
-                        sample_fasta[sample]= sample_fasta[sample][:temp_position] + gt + sample_fasta[sample][temp_position:] 
-                        temp_position = temp_position + 1 
+                        if(use_indels):
+                            gt = list(real_gt[i])
+                            sample_fasta[sample]= sample_fasta[sample][:temp_position] + gt + sample_fasta[sample][temp_position:] 
+                            temp_position = temp_position + 1 
                     elif(len(real_gt) < len(ref) and i != 0):
                         sample_fasta[sample][position + i] = '-'
     with open(output_fasta,'w') as out:
@@ -72,6 +73,8 @@ def main():
     parser.add_argument('-s','--species',dest='species',default='human',
                         help="Species that you are performing analysis on, "
                              "Currently accepted values are human and dog")
+    parser.add_argument('--use-indels',dest='use_indels',action="store_true",
+                        help="Do not use indels in the analysis", default=False)
     args = parser.parse_args()
     assert  args.fasta_output is not None, \
             "-o or --output is required"
@@ -79,6 +82,8 @@ def main():
             "-i or --vcf is required"
     assert args.reference is not None, \
             "-r or --reference is required"
-    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species) 
+    if(args.use_indels is None):
+        args.use_indels = False
+    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species,args.use_indels) 
 if __name__ == "__main__":
     main()
