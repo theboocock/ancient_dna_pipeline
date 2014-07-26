@@ -7,3 +7,9 @@
 [submodule "src/bowtie2"]
 	path = src/bowtie2
 	url = git@github.com:BenLangmead/bowtie2.git
+[submodule "mapDamage"]
+	path = mapDamage
+	url = https://github.com/ginolhac/mapDamage
+[submodule "src/mapDamage"]
+	path = src/mapDamage
+	url = https://github.com/ginolhac/mapDamage
