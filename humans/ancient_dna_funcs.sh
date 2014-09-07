@@ -61,29 +61,52 @@ haplocaller_combine(){
         -I {} \
         -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
     $JAVA7 -jar -Xmx4g $GATK \
-    -T GenotypeGVCFs \
-    -R ${reference} \
-    `for i in ${tmp_dir}/*.gvcf
-    do
-        echo "--variant ${i}"
-    done` \
+        -T GenotypeGVCFs \
+        -R ${reference} \
+        `for i in ${tmp_dir}/*.gvcf
+do
+    echo "--variant ${i}"
+done` \
     -o ${vcf_output} 
 }
 vcf_output=$results_dir/$SETUP_FILE.raw.vcf
 
 vcf_filter(){
-   vcf_input=$vcf_output 
-   $JAVA7 -jar $GATK \
-    -T VariantFiltration \
-    -R $reference \
-    -V $vcf_output \
-    --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 40.0 || HaplotypeScore > 13.0 || MappingQualityRankSum < -12.5 || ReadPosRankSum < -8.0" \
-    --filterName "my_snp_filter" \
-    -o $results_dir/$SETUP_FILE.filter.vcf 
+    vcf_input=$vcf_output 
+    $JAVA7 $XMX -jar $GATK \
+        -T VariantFiltration \
+        -R $reference \
+        -V $vcf_output \
+        --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 40.0" \
+        --filterName "my_snp_filter" \
+        -o $results_dir/$SETUP_FILE.filter.vcf 
+}
+indel_realignment(){
+    $JAVA7 $XMX -jar $GATK \
+        -T RealignerTargetCreator \
+        -R $reference \
+        `for i in ${SAM_SEARCH_EXPAND}
+do
+    echo "--I ${i}"
+done` \
+        -o ${tmp_dir}/indel_realigner.intervals
+    parallel --env PATH -j $CORES "$JAVA7 $XMX -jar $GATK \
+        -T IndelRealigner \
+        -R $reference \
+        -I {}
+        -targetIntervals ${tmp_dir}/indel_realigner.intervals
+        -o {/.}.realigned.bam" ::: $SAM_SEARCH_EXPAND
+        SAM_SEARCH_EXPAND=$tmp_dir/*.realigned.bam
 }
 
-generate_dna_damage_plots(){
-  parallel -j ${CORES}  "mapDamage -i {} -d ${results_dir}/damage/{/.}" ::: ${SAM_SEARCH_EXPAND}
+map_damage(){
+    parallel --env PATH -j ${CORES} "mapDamage -i {} -d ${results_dir}/damage/{/.} --rescale -r ${reference}" ::: ${SAM_SEARCH_EXPAND}
+    parallel -j ${CORES} "cp {} ${tmp_dir}/" ::: ${results_dir}/damage/*/*bam
+    SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
+}
+pmd(){
+    parallel --env PATH -j ${CORES} "samtools view -H {} | pmdtools.py --threshold 3 --header | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"
+    SAM_SEARCH_EXPAND=${tmp_dir}/*pmd_filter.bam
 }
 
 vcf_to_haplogrep(){
@@ -94,22 +117,32 @@ vcf_to_haplogrep(){
 }
 
 vcf_to_fasta(){
-    parallel -j ${CORES} "vcf_to_fasta.py -i {} -o ${results_dir}/{/.}.fa -r ${reference} -s human" ::: ${tmp_dir}/*.ss.vcf
-    vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_filtered.fa -r ${reference} 
+#    parallel -j ${CORES} "vcf_to_fasta.py -i {} -o ${results_dir}/{/.}.fa -r ${reference} -s human" ::: ${tmp_dir}/*.ss.vcf
+    vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta.fa -r ${reference}
+    vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered.fa -r ${reference} 
+    # Add vcf_to_fasta
+    vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels
+    vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
+}
+fasta_to_nexus(){
+    # Use python script to convert to nexus, removing all  
+   seqmagick convert --output-format nexus --alphabet dna $vcf_output -o $results_dir/final.nex
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_filter.nex 
 }
 
 #make_coverage_plots.py has hardcoded settings for coverage
 coverage_plots(){
+    rm coverage/coverage_data.txt
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.rmdup.bam
     make_coverage_plots.pl -- $tmp_dir/*.cov > $results_dir/coverage_plots.ps
 
 }
+
 coverage_plots_R(){
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${tmp_dir}/*.rmdup.bam
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     parallel -j ${CORES} "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
 }
-
 add_and_or_replace_groups(){
     while read line
     do
@@ -117,24 +150,35 @@ add_and_or_replace_groups(){
         output=$file_name
         java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sam OUTPUT=${tmp_dir}/$output.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name 
 done < $SETUP_FILE
-SAM_SEARCH_EXPAND=${tmp_dir}/*.bam
+    SAM_SEARCH_EXPAND=${tmp_dir}/*.bam
 }
+#TODO remove
 
 map_reads(){
 while read line
 do
     file_name=$(echo $line | cut -f 1 -d ' ')
-    output=$file_name 
-    echo $reference
+    output=$file_name
+    extra_arg_bwa=""
+    if [[ $MAP_DAMAGE != "" ]]; then
+        extra_arg_bwa="–n 0.01 –o 2 –l 16500"
+    fi 
     if [[  $MAPPER =  bwa ]]; then
         if [[ $END = pe ]]; then
             # use bwa mem for paired end alignments
             pe_one=`echo ${line} | cut -d ' ' -f 2`
             pe_two=`echo ${line} | cut -d ' ' -f 3`
+            if [[ $MAP_DAMAGE = "" ]]; then
             bwa mem -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
+            else
+                bwa aln -t $CORES $extra_arg_bwa $reference $pe_one > tmp1.sai
+                bwa aln -t $CORES $extra_arg_bwa $reference $pe_two > tmp2.sai
+                bwa sampe $reference tmp1.sai tmp2.sai $pe_one $pe_two > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
+            fi
         else
-            se=$(echo $line | cut -f -d ' ' -f 2)
-            bwa mem -t $CORES $reference $se > $tmp_dir/$ouput.sam 2> $tmp_dir/$ouput.bwa.err
+            se=$(echo $line | cut  -d ' ' -f 2)
+            echo $se
+            bwa mem -t $CORES ${extra_arg_bwa} $reference $se > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
         fi
             # use aln for se 
     elif [[ $MAPPER = "bowtie" ]]; then 
@@ -146,17 +190,12 @@ do
             bowtie2 -x $reference -u $se > $tmp_dir/$output.sam 2> $tmp_dir/$output.bowtie.err
         fi 
     fi 
-    echo $MAPPER
     # samtools stuff
 done < $SETUP_FILE
 SAM_SEARCH_EXPAND="${tmp_dir}/*.sam"
 }
-map_damage(){
-while read line
-do
-    mapDamage
-done < $SETUP_FILE
-}
+
+
 
 # $@ for add or replace groups
 #Run functions 

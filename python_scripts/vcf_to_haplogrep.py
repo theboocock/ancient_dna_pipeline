@@ -31,14 +31,18 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
         ref=record.REF
         for sample in record.samples:
             genotype=sample['GT']
+            pl = sample['PL']
             if(genotype == None): continue
             s = sample.sample
             # Check whether we have something different from the
             # reference.
             #print(position)
+            pl = [int(o) for o in pl]
+            pl = pl.index(min(pl))
+            # If pl is greater than zero
       #      print(len(alt))
             genotype = genotype.split('/')
-            if(int(genotype[0]) != 0):
+            if(int(pl) > 0):
                 genotype =genotype[0]
                 real_gt=str(alt[int(genotype)-1])
                 temp_position=position
@@ -70,7 +74,10 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
         for sub in substitions:
             output_line.append(sub)
         #print(output_line) 
+        # TODO this could be problematic if actually have people with exactly the reference sequence.
         output_line = "\t".join(output_line) + "\n"
+        if(len(output_line.split('\t')) == 3):
+            continue
         #print(output_line)
         hgrep_o.write(output_line)
           

@@ -25,37 +25,41 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     samples = vcf_reader.samples
     for sample in samples:
-        sample_fasta[sample] = full_sequence
+        sample_fasta[sample] = full_sequence[:]
     for record in vcf_reader:
         for sample in record.samples:
             genotype = sample['GT']
+            pl = sample['PL']
             if(genotype == None):
                 continue
             sample = sample.sample
             position = record.POS
             genotype=genotype.split('/')
-            if(int(genotype[0]) != 0):
+            pl = [int(o) for o in pl]
+            pl = pl.index(min(pl))
+            # If pl is greater than zero
+            if(int(pl) > 0):
                 alt=record.ALT
                 no_alleles = 1 + len(alt)
                 ref=record.REF
                 genotype = genotype[0]
-                temp_position = position 
+                temp_position = position - 1 
                 real_gt =str(alt[int(genotype)-1])
                 if(species == 'human'):
                     if(position == 8270 and ref=="CACCCCCTCT"):
-                        sample_fasta[sample][8280:8289] = '-'*8 
+                        sample_fasta[sample][8280:8289] = '-'*9 
                         continue
                 for i in range(0,max(len(real_gt),len(ref))):
                     if ( i == (len(real_gt) - 1) and i == (len(ref)- 1)):              
                         gt = real_gt[i]
-                        sample_fasta[sample][position] = gt
+                        sample_fasta[sample][temp_position] = gt
                     elif(len(real_gt) > len(ref) and i != 0):
                         if(use_indels):
                             gt = list(real_gt[i])
                             sample_fasta[sample]= sample_fasta[sample][:temp_position] + gt + sample_fasta[sample][temp_position:] 
                             temp_position = temp_position + 1 
                     elif(len(real_gt) < len(ref) and i != 0):
-                        sample_fasta[sample][position + i] = '-'
+                        sample_fasta[sample][temp_position + i] = '-'
     with open(output_fasta,'w') as out:
         for sample in samples:
             out.write('>'+sample + '\n')
