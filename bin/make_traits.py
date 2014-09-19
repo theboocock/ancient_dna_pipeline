@@ -1,0 +1,1 @@
+/Users/james/bioinformatics/ancient_dna_pipeline/python_scripts/make_traits.py

@@ -16,18 +16,21 @@
 #DIR=$( dirname "$(readlink  $0)")
 
 #input setup file 
+annotate_traits(){
+    parallel -j ${CORES} "make_traits.py -i {} -t $TRAITS_FILE -o {/.}.traits.nex" ::: $results_dir/*.nex 
+}
 
 sort_bam(){    
-parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/SortSam.jar INPUT={} OUTPUT={.}.sorted.bam SORT_ORDER=coordinate" ::: $SAM_SEARCH_EXPAND
+parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/SortSam.jar INPUT={} OUTPUT={.}.sorted.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
     #parallel -j 6 "java -Xmx1g -jar ${PICARD}/ValidateSamFile.jar INPUT={} OUTPUT=${tmp_dir}/{/.}.final.txt" ::: ${tmp_dir}/*.rmdup.bam
     SAM_SEARCH_EXPAND=${tmp_dir}/*.sorted.bam
 }
 #MOVE ME
 mark_duplicates(){
     parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT={} OUTPUT=${tmp_dir}/{/.}.rmdup.bam METRICS_FILE=${tmp_dir}/{/.}.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT" ::: $SAM_SEARCH_EXPAND
+SAM_SEARCH_EXPAND=${tmp_dir}/*.sorted.rmdup.bam
 }
 
-SAM_SEARCH_EXPAND=${tmp_dir}/*.sorted.rmdup.bam
 
 consensus_sequences(){
     parallel -j ${CORES} "samtools mpileup -uf ${reference} {} | bcftools view -cg - | vcfutils.pl vcf2fq | sed '/^@/!d;s//>/;N' > ${results_dir}/{/.}.fa" ::: $SAM_SEARCH_EXPAND
@@ -35,7 +38,7 @@ consensus_sequences(){
 
 index_bams(){
     parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/BuildBamIndex.jar \
-        INPUT={}" ::: $SAM_SEARCH_EXPAND
+        INPUT={} VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
 }
 call_variants_samtools(){
     vcf_output=$SETUP_FILE.vcf
@@ -81,20 +84,21 @@ vcf_filter(){
         --filterName "my_snp_filter" \
         -o $results_dir/$SETUP_FILE.filter.vcf 
 }
+ancient_filter(){
+    ancient_filter.py -d 2 --c2t --g2a -i {} -o $temp_results/{/.}.anc.fq
+
+}
 indel_realignment(){
-    $JAVA7 $XMX -jar $GATK \
+    parallel --env PATH -j $CORES "$JAVA7 $XMX -jar $GATK \
         -T RealignerTargetCreator \
         -R $reference \
-        `for i in ${SAM_SEARCH_EXPAND}
-do
-    echo "--I ${i}"
-done` \
-        -o ${tmp_dir}/indel_realigner.intervals
+        -I {} \
+        -o ${tmp_dir}/{/.}.intervals" ::: $SAM_SEARCH_EXPAND
     parallel --env PATH -j $CORES "$JAVA7 $XMX -jar $GATK \
         -T IndelRealigner \
         -R $reference \
         -I {}
-        -targetIntervals ${tmp_dir}/indel_realigner.intervals
+        -targetIntervals ${tmp_dir}/{/.}.intervals
         -o {/.}.realigned.bam" ::: $SAM_SEARCH_EXPAND
         SAM_SEARCH_EXPAND=$tmp_dir/*.realigned.bam
 }
@@ -102,8 +106,8 @@ done` \
 map_damage(){
     parallel --env PATH -j ${CORES} "mapDamage -i {} -d ${results_dir}/damage/{/.} --rescale -r ${reference}" ::: ${SAM_SEARCH_EXPAND}
     parallel -j ${CORES} "cp {} ${tmp_dir}/" ::: ${results_dir}/damage/*/*bam
-    SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
 }
+    SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
 pmd(){
     parallel --env PATH -j ${CORES} "samtools view -H {} | pmdtools.py --threshold 3 --header | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"
     SAM_SEARCH_EXPAND=${tmp_dir}/*pmd_filter.bam
@@ -123,12 +127,22 @@ vcf_to_fasta(){
     # Add vcf_to_fasta
     vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels
     vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
+    vcf_to_fasta.py -i $results_dir/ancient_strict.vcf -o ${results_dir}/ancient_strict.fa -r ${reference}
 }
 fasta_to_nexus(){
     # Use python script to convert to nexus, removing all  
-   seqmagick convert --output-format nexus --alphabet dna $vcf_output -o $results_dir/final.nex
-   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_filter.nex 
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta.fa  $results_dir/temp.nex
+   cat $results_dir/temp.nex | tr -d "'" > $results_dir/final.nex  
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta_filtered.fa ${results_dir}/temp.nex 
+   cat $results_dir/temp.nex | tr -d "'"  > $results_dir/final_filter.nex  
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/ancient_strict.fa  $results_dir/ancient_strict.nex
+   cat $results_dir/temp.nex | tr -d "'" > $results_dir/ancient_strict.nex
 }
+align_muscle(){
+    muscle -in $results_dir/final_fasta_filtered_indels.fa -out $results_dir/mus_fasta_filt.fa
+    muscle -in $results_dir/final_fasta_indels.fa -out $results_dir/mus_fasta.fa
+}
+
 
 #make_coverage_plots.py has hardcoded settings for coverage
 coverage_plots(){
@@ -139,7 +153,7 @@ coverage_plots(){
 }
 
 coverage_plots_R(){
-    parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${tmp_dir}/*.rmdup.bam
+    parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     parallel -j ${CORES} "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
 }
@@ -148,12 +162,19 @@ add_and_or_replace_groups(){
     do
         file_name=$(echo $line | cut -f -1 -d ' ')
         output=$file_name
-        java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sam OUTPUT=${tmp_dir}/$output.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name 
-done < $SETUP_FILE
-    SAM_SEARCH_EXPAND=${tmp_dir}/*.bam
+        if [[ $MAP_DAMAGE != "" ]]; then
+            java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.rescaled.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
+        else
+            java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name VALIDATION_STRINGENCY=LENIENT 
+        fi
+    done < $SETUP_FILE
 }
-#TODO remove
 
+ SAM_SEARCH_EXPAND=${tmp_dir}/*.final.bam
+remove_g_a_c_t(){
+   cat $results_dir/pipeline_setup.txt.filter.vcf| ack -v  "G\tA|C\tT" > $results_dir/ancient_strict.vcf
+   
+}
 map_reads(){
 while read line
 do
@@ -161,7 +182,7 @@ do
     output=$file_name
     extra_arg_bwa=""
     if [[ $MAP_DAMAGE != "" ]]; then
-        extra_arg_bwa="–n 0.01 –o 2 –l 16500"
+        extra_arg_bwa="-n 0.01 -o 2 -l 16500"
     fi 
     if [[  $MAPPER =  bwa ]]; then
         if [[ $END = pe ]]; then
@@ -194,8 +215,6 @@ do
 done < $SETUP_FILE
 SAM_SEARCH_EXPAND="${tmp_dir}/*.sam"
 }
-
-
 
 # $@ for add or replace groups
 #Run functions 

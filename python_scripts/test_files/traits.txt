@@ -1,0 +1,46 @@
+SampleNo	DATE 	Name	notes	Location	Province	Country	Date
+MS65	Dec-13	WB-65		Wairau Bar	Upper SI	NZ	Early
+MS80-1	Dec-13	HH-80	first capture	Houhora	Upper NI	NZ	Early
+MS81	Dec-13	Mocha-1		P21-3	Mocha	Chile	
+MS82	Dec-13	Mocha-2		P21-3	Mocha	Chile	
+MS83	Dec-13	Mocha-3		P21-3	Mocha	Chile	
+MS7901	Dec-13	HH-79	first capture	Houhora	Upper NI	NZ	Early
+MS76-1	Dec-13	HH-76		Houhora	Upper NI	NZ	Early
+MS77-1	Dec-13	HH-77		Houhora	Upper NI	NZ	Early
+MS78-1	Dec-13	HH-78		Houhora	Upper NI	NZ	Early
+MS10093	Mar-14	PR-93		Pleasant River	Coastal Otago	NZ	Early
+MS10094	Mar-14	PR-94		Pleasant River	Coastal Otago	NZ	Early
+MS10095	Mar-14	PR-95		Pleasant River	Coastal Otago	NZ	Early
+MS10096	Mar-14	PO-96		Pounawea	Coastal Otago	NZ	Early
+MS10097	Mar-14	PO-97		Pounawea	Coastal Otago	NZ	Early
+MS10098	Mar-14	PO-98		Pounawea	Coastal Otago	NZ	Early
+MS10062	Jul-14	WB-62		Wairau Bar	Upper SI	NZ	Early
+MS10064	Jul-14	WB-64		Wairau Bar	Upper SI	NZ	Early
+MS10066	Jul-14	WB-66		Wairau Bar	Upper SI	NZ	Early
+MS10067	Jul-14	WB-67		Wairau Bar	Upper SI	NZ	Early
+MS10068	Jul-14	WB-68		Wairau Bar	Upper SI	NZ	Early
+MS10069	Jul-14	WB-69		Wairau Bar	Upper SI	NZ	Early
+MS10070	Jul-14	WB-70		Wairau Bar	Upper SI	NZ	Early
+MS10079	Jul-14	HH-79	re-captured	Houhora	Upper NI	NZ	Early
+MS10080	Jul-14	HH-80	re-captured	Houhora	Upper NI	NZ	Early
+MS10104	Jul-14	AP-104		Airport 	Auckland	NZ	Late
+MS10115	Jul-14	SM-115		Shag Mouth	Coastal Otago	NZ	Early
+MS10117	Jul-14	SM-117		Shag Mouth	Coastal Otago	NZ	Early
+MS10123	Jul-14	SM-123		Shag Mouth	Coastal Otago	NZ	Early
+MS10124	Jul-14	SM-124		Shag Mouth	Coastal Otago	NZ	Early
+MS10040	Aug-14	Mocha-4		P23	Mocha	Chile	
+MS10086	Aug-14	GC-86b	burial dog 1	Gisborne Courthouse	East Coast 	NZ	Contact
+MS10087	Aug-14	GC-87b	burial dog 2	Gisborne Courthouse	East Coast 	NZ	Contact
+MS10088	Aug-14	MA-88		Matiu Somes Island	Wgtn	NZ	Late?
+MS10089	Aug-14	OT-89b	burial	Otumoetai	Bay of Plenty	NZ	Contact?
+MS10090	Aug-14	SC-90b	burial		Santa Cruz	Solomon Islands	
+MS10105	Aug-14	AP-105		Airport 	Auckland	NZ	Late
+MS10106	Aug-14	AP-106b	burial F.3494	Airport 	Auckland	NZ	Late
+MS10107	Aug-14	AP-107		Airport 	Auckland	NZ	Late
+MS10108	Aug-14	AP-108		Airport 	Auckland	NZ	Late
+MS10109	Aug-14	AP-109		Airport 	Auckland	NZ	Late
+MS10110	Aug-14	SM-110		Shag Mouth	Coastal Otago	NZ	Early
+MS10111	Aug-14	SM-111		Shag Mouth	Coastal Otago	NZ	Early
+MS10112	Aug-14	SM-112		Shag Mouth	Coastal Otago	NZ	Early
+MS10113	Aug-14	SM-113		Shag Mouth	Coastal Otago	NZ	Early
+MS10114	Aug-14	SM-114		Shag Mouth	Coastal Otago	NZ	Early
