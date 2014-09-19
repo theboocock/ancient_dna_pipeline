@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ancient DNA pipeline.
 ====================
 
@@ -7,3 +8,7 @@ Installation
 =============
 
 pip install -r requirements.txt
+=======
+ancient_dna_pipeline
+====================
+>>>>>>> b022286e096a4eaf1a318db944245375c8cff3f0
