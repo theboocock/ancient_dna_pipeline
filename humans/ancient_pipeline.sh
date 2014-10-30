@@ -7,6 +7,9 @@ get_options(){
         i)
             SETUP_FILE=$OPTARG
             ;;
+        c)
+            CORES=$OPTARG
+            ;;
         m)
             XMX=-Xmx${OPTARG}
             ;;
@@ -129,6 +132,7 @@ if [[ $PMD != "" ]]; then
     exit 1
 fi
 source $DIR/ancient_dna_funcs.sh
+source $DIR/fastq_filters.sh
 #source $DIR/modern_human_funcs.sh
 # This code generates the reference genome that is 2 x the original.
 #if [[ $MTDNA != "" ]]; then
@@ -138,44 +142,60 @@ source $DIR/ancient_dna_funcs.sh
 #    cat r.tmp >> ref.tmp
 #    rm r.tmp
 #    reference=ref.tmp
-#fi
+touch .fin_pipeline
+
 if [[ $ANCIENT_FASTQ_FILTER = "TRUE" ]]; then
     ancient_filter
 fi
 
-map_reads 
+map_reads
+echo "DONE MAP READS" >> .fin_pipeline
 sort_bam
+echo "DONE SORT BAM" >> .fin_pipeline
 mark_duplicates
+echo "DONE MARK DUPLICATES" >> .fin_pipeline
 index_bams
+echo "DONE INDEX BAMS" >> .fin_pipeline
 #Run some map Damage
-#consensus_sequences
-
 # TODO COMPARE HaplotypeCaller and Samtools
 #call_variants_samtools
-#if [[ $MAP_DAMAGE != "" ]]; then
-#    map_damage   
-#    index_bams
-#fi
+if [[ $MAP_DAMAGE != "" ]]; then
+    map_damage  
+    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+    index_bams
+    echo "DONE INDEX BAMS" >> .fin_pipeline
+fi
 add_and_or_replace_groups 
+echo "DONE REPLACE_GROUPS" >> .fin_pipeline
 index_bams
+echo "DONE INDEX BAMS" >> .fin_pipeline
 if [[ $PMD != "" ]]; then
     pmd
+    echo "DONE PMD" >> .fin_pipeline
     index_bams
+    echo "DONE INDEX BAMS" >> .fin_pipeline
 fi
-#if [[ $MINIMAL != "TRUE" ]]; then
-#    haplotype_caller
-#fi
+if [[ $MINIMAL != "TRUE" ]]; then
+    haplotype_caller
+    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
+fi
 haplocaller_combine
+echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 vcf_filter
+echo "DONE VCF FILTER" >> .fin_pipeline
 vcf_to_haplogrep
+echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 coverage_plots_R
-remove_g_a_c_t
+echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
+#
+#if [[ $MAP_DAMAGE != "" ]]; then
+#    remove_g_a_c_t
+#fi
 # Turn them all the fasta
+align_muscle
 vcf_to_fasta
 # Post-mortem damage 
-##fasta_to_nexus
-align_muscle
+fasta_to_nexus
 if [[ $TRAITS_FILE != "" ]]; then
     annotate_traits
 fi
-touch .fin_pipeline

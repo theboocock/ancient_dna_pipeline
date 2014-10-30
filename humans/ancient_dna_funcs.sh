@@ -17,7 +17,7 @@
 
 #input setup file 
 annotate_traits(){
-    parallel -j ${CORES} "make_traits.py -i {} -t $TRAITS_FILE -o {/.}.traits.nex" ::: $results_dir/*.nex 
+    parallel -j ${CORES} "make_traits.py -i {} -t $TRAITS_FILE -o ${results_dir}/{/.}.traits.nex" ::: $results_dir/ancient_strict.nex $results_dir/final.nex $results_dir/final_filter.nex 
 }
 
 sort_bam(){    
@@ -42,7 +42,7 @@ index_bams(){
 }
 call_variants_samtools(){
     vcf_output=$SETUP_FILE.vcf
-    samtools mpileup -uf ${reference}.fa ${tmp_dir}/*.rmdup.bam  | bcftools view -cg - | vcfutils.pl varFilter -d ${MIN_DEPTH}> $results_dir/$vcf_output 
+    samtools mpileup -uf ${reference} ${tmp_dir}/*.rmdup.bam  | bcftools view -cg - | vcfutils.pl varFilter -d ${MIN_DEPTH}> $results_dir/$vcf_output 
 }
 
 haplotype_caller(){
@@ -56,6 +56,7 @@ haplotype_caller(){
         -stand_emit_conf 10.0 " ::: $SAM_SEARCH_EXPAND
 }
 haplocaller_combine(){
+    vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     parallel -j ${CORES} "${JAVA7} -jar $XMX $GATK \
         -T HaplotypeCaller \
         -R ${reference} \
@@ -70,9 +71,16 @@ haplocaller_combine(){
 do
     echo "--variant ${i}"
 done` \
-    -o ${vcf_output} 
+    -o ${vcf_output}
+    JAVA7 -jar -Xmx4g $GATK \
+        -T GenotypeGVCFs \
+        -R ${reference} \
+        `for i in ${tmp_dir}/*.gvcf
+do
+    echo "--variant ${i}"
+done` \
+    -o ${results_dir}/all_sites.vcf --includeNonVariantSites
 }
-vcf_output=$results_dir/$SETUP_FILE.raw.vcf
 
 vcf_filter(){
     vcf_input=$vcf_output 
@@ -80,9 +88,10 @@ vcf_filter(){
         -T VariantFiltration \
         -R $reference \
         -V $vcf_output \
-        --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 40.0" \
+        --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 20.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
         --filterName "my_snp_filter" \
-        -o $results_dir/$SETUP_FILE.filter.vcf 
+        -o $results_dir/$SETUP_FILE.temp.vcf 
+    cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf
 }
 ancient_filter(){
     ancient_filter.py -d 2 --c2t --g2a -i {} -o $temp_results/{/.}.anc.fq
@@ -106,8 +115,8 @@ indel_realignment(){
 map_damage(){
     parallel --env PATH -j ${CORES} "mapDamage -i {} -d ${results_dir}/damage/{/.} --rescale -r ${reference}" ::: ${SAM_SEARCH_EXPAND}
     parallel -j ${CORES} "cp {} ${tmp_dir}/" ::: ${results_dir}/damage/*/*bam
-}
     SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
+}
 pmd(){
     parallel --env PATH -j ${CORES} "samtools view -H {} | pmdtools.py --threshold 3 --header | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"
     SAM_SEARCH_EXPAND=${tmp_dir}/*pmd_filter.bam
@@ -127,24 +136,21 @@ vcf_to_fasta(){
     # Add vcf_to_fasta
     vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels
     vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
-    vcf_to_fasta.py -i $results_dir/ancient_strict.vcf -o ${results_dir}/ancient_strict.fa -r ${reference}
+    # Strict Filtering to ancient_strict
 }
 fasta_to_nexus(){
-    # Use python script to convert to nexus, removing all  
+    # Use python script to convert to nexus, removing all 
    seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta.fa  $results_dir/temp.nex
    cat $results_dir/temp.nex | tr -d "'" > $results_dir/final.nex  
    seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta_filtered.fa ${results_dir}/temp.nex 
    cat $results_dir/temp.nex | tr -d "'"  > $results_dir/final_filter.nex  
-   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/ancient_strict.fa  $results_dir/ancient_strict.nex
-   cat $results_dir/temp.nex | tr -d "'" > $results_dir/ancient_strict.nex
 }
 align_muscle(){
     muscle -in $results_dir/final_fasta_filtered_indels.fa -out $results_dir/mus_fasta_filt.fa
     muscle -in $results_dir/final_fasta_indels.fa -out $results_dir/mus_fasta.fa
 }
-
-
 #make_coverage_plots.py has hardcoded settings for coverage
+
 coverage_plots(){
     rm coverage/coverage_data.txt
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.rmdup.bam
@@ -155,7 +161,7 @@ coverage_plots(){
 coverage_plots_R(){
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
-    parallel -j ${CORES} "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
+    parallel -j 1 "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
 }
 add_and_or_replace_groups(){
     while read line
@@ -168,13 +174,17 @@ add_and_or_replace_groups(){
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name VALIDATION_STRINGENCY=LENIENT 
         fi
     done < $SETUP_FILE
+ SAM_SEARCH_EXPAND=${tmp_dir}/*.final.bam
 }
 
- SAM_SEARCH_EXPAND=${tmp_dir}/*.final.bam
-remove_g_a_c_t(){
-   cat $results_dir/pipeline_setup.txt.filter.vcf| ack -v  "G\tA|C\tT" > $results_dir/ancient_strict.vcf
+#remove_g_a_c_t(){
+   #cat $results_dir/pipeline_setup.txt.filter.vcf | ack -v  "G\tA|C\tT" > $results_dir/ancient_strict.vcf
+   # vcf_to_fasta.py -i $results_dir/ancient_strict.vcf -o ${results_dir}/ancient_strict.fa -r ${reference}
+   #cat $results_dir/temp.nex | tr -d "'" > $results_dir/ancient_strict.nex
+   #rm $results_dir/temp.nex
+   #seqmagick convert --output-format nexus --alphabet dna ${results_dir}/ancient_strict.fa  $results_dir/temp.nex
    
-}
+#}
 map_reads(){
 while read line
 do
@@ -182,19 +192,24 @@ do
     output=$file_name
     extra_arg_bwa=""
     if [[ $MAP_DAMAGE != "" ]]; then
-        extra_arg_bwa="-n 0.01 -o 2 -l 16500"
+        extra_arg_bwa="-n 0.03 -o 2 -l 1024"
     fi 
     if [[  $MAPPER =  bwa ]]; then
         if [[ $END = pe ]]; then
             # use bwa mem for paired end alignments
             pe_one=`echo ${line} | cut -d ' ' -f 2`
             pe_two=`echo ${line} | cut -d ' ' -f 3`
+            if [[ $MAP_DAMAGE != "" ]]; then
+                mkdir -p short_reads
+                AdapterRemoval --collapse --file1 ${pe_one} --file2 ${pe_two} --outputstats ${pe_one}.stats --trimns --outputcollapsed $tmp_dir/$pe_one.collapsed --minlength 25 
+            fi
             if [[ $MAP_DAMAGE = "" ]]; then
-            bwa mem -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
+            # -M is essensetion for picard compatibility
+            bwa mem -M -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
             else
-                bwa aln -t $CORES $extra_arg_bwa $reference $pe_one > tmp1.sai
-                bwa aln -t $CORES $extra_arg_bwa $reference $pe_two > tmp2.sai
-                bwa sampe $reference tmp1.sai tmp2.sai $pe_one $pe_two > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
+                echo "ALIGN"
+                bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.collapsed > tmp1.sai
+                bwa samse $reference tmp1.sai $tmp_dir/$pe_one.collapsed > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
             fi
         else
             se=$(echo $line | cut  -d ' ' -f 2)

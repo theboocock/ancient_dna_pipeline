@@ -38,7 +38,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
             pl = [int(o) for o in pl]
             pl = pl.index(min(pl))
             # If pl is greater than zero
-            if(int(pl) > 0):
+            if(int(pl) == 2):
                 alt=record.ALT
                 no_alleles = 1 + len(alt)
                 ref=record.REF
@@ -57,7 +57,10 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
                         if(use_indels):
                             gt = list(real_gt[i])
                             sample_fasta[sample]= sample_fasta[sample][:temp_position] + gt + sample_fasta[sample][temp_position:] 
-                            temp_position = temp_position + 1 
+                            temp_position = temp_position + 1
+                        else:
+                            gt = real_gt[i]
+                            sample_fasta[sample][temp_position] = gt[0]
                     elif(len(real_gt) < len(ref) and i != 0):
                         sample_fasta[sample][temp_position + i] = '-'
     with open(output_fasta,'w') as out:
@@ -69,7 +72,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
 def main():
     parser= argparse.ArgumentParser()
     parser.add_argument("-i",'--vcf',dest="vcf_input",
-                        help="VCF input file to convert to fasta")
+            help="VCF input file to convert to fasta")
     parser.add_argument('-o','--output',dest="fasta_output",
                         help="Fasta output file")
     parser.add_argument('-r','--reference',dest='reference',

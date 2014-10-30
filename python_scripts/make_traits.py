@@ -11,6 +11,8 @@
 import os
 import numpy
 import argparse
+import sys
+import uuid
 
 TRAITS_TEMPLATE="""BEGIN TRAITS;
                    Dimensions NTRAITS={0};
@@ -52,7 +54,7 @@ def comma_sep_binary_string(sample_names,full_sample_list,individual_trait_list)
     string_dict={}
     trait_dict={}
     individual_trait_list=[s.strip() for s in individual_trait_list]
-    individual_trait_list=["UNKOWN" if s == "" else s for i, s in enumerate(individual_trait_list)]
+    individual_trait_list=["UNKNOWN" if s == "" else s for i, s in enumerate(individual_trait_list)]
     for sample, trait in zip(full_sample_list, individual_trait_list):
         trait_dict[sample] = trait 
     uniq_list = set(individual_trait_list)
@@ -66,10 +68,6 @@ def comma_sep_binary_string(sample_names,full_sample_list,individual_trait_list)
         mod_string[(i)*2] = "1"
         string_dict[item] = ''.join(mod_string)
     sample_dict = {}
-    print(sample_names)
-    print(string_dict)
-    print(sample_dict)
-    print(individual_trait_list)
     for sample in sample_names:
         sample_dict[sample] = string_dict[trait_dict[sample]]
     return(sample_dict, n_traits,trait_labels)
@@ -80,7 +78,8 @@ def traits_to_nexus(input_file ,output_prefix, traits):
     """
     # Pull out the sample names
     samplenames = traits[1:,0]
-    with open('.temp.nex','w') as out_file:
+    temp_file = str(uuid.uuid4())
+    with open(temp_file,'w') as out_file:
         a = open(input_file)
         temp_middle=a.read()
         f_ind=temp_middle.find("matrix") + 7
@@ -95,13 +94,13 @@ def traits_to_nexus(input_file ,output_prefix, traits):
         temp_middle=temp_middle.replace("#NEXUS","")
         out_file.write(temp_middle)
         a.close()
-    with open('.temp.nex','r') as template_file:
+    with open(temp_file,'r') as template_file:
         sequence_and_taxa=template_file.read()
         for i in range(1,traits.shape[1]):
             temp_dict={}
             trait_name = traits[0,i].replace(" ", "")
             t_list = traits[1:,i]
-            out_file=open(output_prefix + '.' + trait_name + '.nex','w')
+            out_file=open(output_prefix + '.' + trait_name.strip() + '.nex','w')
             out_file.write(sequence_and_taxa)
             (sample_dict, n_traits, trait_labels)=comma_sep_binary_string(actual_sample_names, samplenames,t_list)
             matrix = ""
@@ -110,7 +109,7 @@ def traits_to_nexus(input_file ,output_prefix, traits):
             trait_labels=[o.replace(" ","") for o in trait_labels]
             trait_labels=' '.join(trait_labels)
             out_file.write(TRAITS_TEMPLATE.format(n_traits,trait_labels ,matrix))
-    os.remove('.temp.nex')
+    os.remove(temp_file)
 
 def main():
     parser = argparse.ArgumentParser(description="Takes a trait file and creates traits for all the descriptions")

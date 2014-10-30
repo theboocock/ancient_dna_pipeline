@@ -20,11 +20,16 @@ coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=
     if(!is.null(total_coverage_file)){
         #Covered by atleast 10 reads, What percentage are coverered by atleast
         #10 reads.
-        reads_greater_than_10=coverage[coverage[,2] >=10,]
+        reads_greater_than_10=coverage[coverage[,4] >=10,]
         read_gr_10 = round((length(reads_greater_than_10[,1])/xlim_coord[2])*100,digits=2)
-        print(read_gr_10)
-        cat(paste(sample_name,round((length(coverage[,1])/xlim_coord[2])* 100,digits=2), read_gr_10 ,sep='\t'),'\n',file=total_coverage_file,append=T)
-    }
+        mean_dat = sum(coverage[,4])/xlim_coord[2]
+        diff = xlim_coord[2] - length(coverage[,2])
+        add_zeros = rep(0,diff)
+        dat = c(coverage[,4],add_zeros)
+        std_dev = (dat - mean_dat)^2
+        std_dev = sqrt(sum(std_dev)/(xlim_coord[2]-1)) 
+        cat(paste(sample_name,round((length(coverage[,1])/xlim_coord[2])* 100,digits=2), mean_dat, std_dev ,sep='\t'),'\n',file=total_coverage_file,append=T)
+    } 
     gg = gg+ggtitle(paste("Coverage plot for",sample_name, "\n Cov = ", round((length(coverage[,1])/xlim_coord[2])* 100,digits=1),'%'))
       
   } else {
