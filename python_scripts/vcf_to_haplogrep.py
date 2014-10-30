@@ -51,6 +51,9 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
                 # has exactly the same sequence. 
                 # Bwa must align to the first position.
                 if(species == 'human'):
+                    if (position == 955 and ref == "ACCCCC"):
+                        sample_lines[s].extend(["A.CCCCC"])
+                        continue
                     if(position == 8270 and ref=="CACCCCCTCT"):
                         sample_lines[s].extend([str(i)+"d" for i in range(8281,8290)])
                         continue

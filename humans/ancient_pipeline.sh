@@ -60,7 +60,6 @@ get_options(){
         esac
     done
 }
-
 usage(){
 cat << EOF
         Usage: Runs DNA processing for the anatomy laboratory.
@@ -143,11 +142,9 @@ source $DIR/fastq_filters.sh
 #    rm r.tmp
 #    reference=ref.tmp
 touch .fin_pipeline
-
 if [[ $ANCIENT_FASTQ_FILTER = "TRUE" ]]; then
     ancient_filter
 fi
-
 map_reads
 echo "DONE MAP READS" >> .fin_pipeline
 sort_bam
