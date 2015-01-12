@@ -56,14 +56,33 @@ haplotype_caller(){
         -stand_emit_conf 10.0 " ::: $SAM_SEARCH_EXPAND
 }
 haplocaller_combine(){
+    if [[ $BAIL_POS = "HAPLOCALLER" ]]; then
+        echo "BROKE AT HAPLOTYPE_CALLER"
+        exit 1
+    fi
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
-    parallel -j ${CORES} "${JAVA7} -jar $XMX $GATK \
-        -T HaplotypeCaller \
-        -R ${reference} \
-        --emitRefConfidence GVCF --variant_index_type LINEAR \
-        --variant_index_parameter 128000 \
-        -I {} \
-        -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
+    if [[ $MAP_DAMAGE = "" ]]; then
+        parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
+            -T HaplotypeCaller \
+            -R ${reference} \
+            --emitRefConfidence GVCF --variant_index_type LINEAR \
+            --variant_index_parameter 128000 \
+            -I {} \
+            -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
+    else
+        # This sholud hopefully fix this part of the analysis 
+        # e.g running xapply and merging them both into the variant calling pipeline
+        MERGED_READS_1="$results_dir/bams/*yes_collapse.final.bam"
+    #    MERGED_READS_2="$results_dir/bams/*no_collapse.final.bam" 
+        parallel  -j ${CORES} "${JAVA7} -jar $XMX $GATK \
+            -T HaplotypeCaller \
+            -R ${reference} \
+            --emitRefConfidence GVCF --variant_index_type LINEAR \
+            --variant_index_parameter 128000 \
+            -I {} \ 
+            --output_mode EMIT_ALL_SITES --allSitePLs \
+            -o ${tmp_dir}/{/.}.gvcf" ::: $MERGED_READS_1 
+    fi
     $JAVA7 -jar -Xmx4g $GATK \
         -T GenotypeGVCFs \
         -R ${reference} \
@@ -72,7 +91,7 @@ do
     echo "--variant ${i}"
 done` \
     -o ${vcf_output}
-    JAVA7 -jar -Xmx4g $GATK \
+    $JAVA7 -jar -Xmx4g $GATK \
         -T GenotypeGVCFs \
         -R ${reference} \
         `for i in ${tmp_dir}/*.gvcf
@@ -88,7 +107,7 @@ vcf_filter(){
         -T VariantFiltration \
         -R $reference \
         -V $vcf_output \
-        --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 20.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
+        --filterExpression "QD < 2.0 || MQ < 20.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
         --filterName "my_snp_filter" \
         -o $results_dir/$SETUP_FILE.temp.vcf 
     cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf
@@ -118,7 +137,7 @@ map_damage(){
     SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
 }
 pmd(){
-    parallel --env PATH -j ${CORES} "samtools view -H {} | pmdtools.py --threshold 3 --header | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"
+    parallel --env PATH -j ${CORES} "samtools view -h {} | pmdtools.py --threshold 0 --header 2> {tmp_dir}/{/.}.pmd_stats.txt | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"
     SAM_SEARCH_EXPAND=${tmp_dir}/*pmd_filter.bam
 }
 
@@ -163,18 +182,34 @@ coverage_plots_R(){
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     parallel -j 1 "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
 }
+
 add_and_or_replace_groups(){
     while read line
     do
         file_name=$(echo $line | cut -f -1 -d ' ')
         output=$file_name
-        if [[ $MAP_DAMAGE != "" ]]; then
-            java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.rescaled.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
+        if [[ $MAP_DAMAGE = "TRUE" ]]; then
+            # Run mapDAmage on both the files
+            # MS10148-2.no_collapse.rmdup.rescaled.sorted.sorted.bam 
+            # MS10148-2.collapse.rmdup.rescaled.sorted.sorted.bam
+            java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.collapse.rmdup.rescaled.ancient_filter.sorted.bam OUTPUT=${tmp_dir}/$output.yes_collapse.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
+            java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.no_collapse.rmdup.rescaled.ancient_filter.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
         else
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name VALIDATION_STRINGENCY=LENIENT 
         fi
     done < $SETUP_FILE
- SAM_SEARCH_EXPAND=${tmp_dir}/*.final.bam
+ SAM_SEARCH_EXPAND="${tmp_dir}/*yes_collapse.final.bam"
+ echo $SAM_SEARCH_EXPAND
+}
+
+ancient_filter(){
+   parallel -j $CORES "ancient_filter.py -i {} -o $temp_results/{/.}.ancient_filter.bam -f "bam" -g -c" :::  $SAM_SEARCH_EXPAND
+   SAM_SEARCH_EXPAND=${tmp_dir}/*ancient_filter.bam
+}
+
+store_bams(){ 
+    parallel -j $CORES "cp {} $results_dir/bams/{/.}.bam" ::: $SAM_SEARCH_EXPAND
+    SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 }
 
 #remove_g_a_c_t(){
@@ -196,20 +231,31 @@ do
     fi 
     if [[  $MAPPER =  bwa ]]; then
         if [[ $END = pe ]]; then
-            # use bwa mem for paired end alignments
-            pe_one=`echo ${line} | cut -d ' ' -f 2`
-            pe_two=`echo ${line} | cut -d ' ' -f 3`
+            # use bwa mem for paired end alignment
+            pe_one=$(echo ${line} | cut -d ' ' -f 2)
+            pe_two=$(echo ${line} | cut -d ' ' -f 3)
             if [[ $MAP_DAMAGE != "" ]]; then
-                mkdir -p short_reads
-                AdapterRemoval --collapse --file1 ${pe_one} --file2 ${pe_two} --outputstats ${pe_one}.stats --trimns --outputcollapsed $tmp_dir/$pe_one.collapsed --minlength 25 
+                echo $pe_one
+                echo $pe_two
+                AdapterRemoval --collapse --file1 ${pe_one} --file2 ${pe_two} --outputstats ${pe_one}.stats --trimns --outputcollapsed $tmp_dir/${pe_one}.collapsed --minlength 25 --output1 $tmp_dir/$pe_one.p1 --output2 $tmp_dir/${pe_two}.p2 --mm 3  --minquality 20   --trimqualities
             fi
             if [[ $MAP_DAMAGE = "" ]]; then
             # -M is essensetion for picard compatibility
             bwa mem -M -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
             else
-                echo "ALIGN"
                 bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.collapsed > tmp1.sai
-                bwa samse $reference tmp1.sai $tmp_dir/$pe_one.collapsed > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
+                bwa samse $reference tmp1.sai $tmp_dir/$pe_one.collapsed > $tmp_dir/$output.collapse.sam 2> $tmp_dir/$output.collapse.bwa.err
+                bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.p1 > tmp1.sai 
+                bwa aln -t $CORES $extra_arg_bwa $reference  $tmp_dir/$pe_two.p2 > tmp2.sai 
+                bwa sampe $reference tmp1.sai tmp2.sai $tmp_dir/$pe_one.p1 $tmp_dir/$pe_two.p2 > $tmp_dir/$output.no_collapse.sam 
+                samtools view -Sb $tmp_dir/$output.no_collapse.sam > $tmp_dir/$output.no_collapse.bam
+                samtools sort $tmp_dir/$output.no_collapse.bam $tmp_dir/$output.no_collapse.sorted
+                # Mark Duplicates Paired END
+                java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT=${tmp_dir}/$output.no_collapse.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.rmdup.bam METRICS_FILE=${tmp_dir}/$output.no_callapse.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT
+                #FilterUniqueBam
+                samtools view -Sb $tmp_dir/$output.collapse.sam > $tmp_dir/$output.collapse.bam
+                samtools sort $tmp_dir/$output.collapse.bam $tmp_dir/$output.collapse.sorted
+                filterUniqueBam.py --remove-duplicates < $tmp_dir/$output.collapse.sorted.bam > $tmp_dir/$output.collapse.rmdup.bam
             fi
         else
             se=$(echo $line | cut  -d ' ' -f 2)
@@ -229,6 +275,20 @@ do
     # samtools stuff
 done < $SETUP_FILE
 SAM_SEARCH_EXPAND="${tmp_dir}/*.sam"
+
+if [[ $MAP_DAMAGE != "" ]]; then
+    SAM_SEARCH_EXPAND="${tmp_dir}/*.collapse.rmdup.bam"
+    map_damage
+    SAM_SEARCH_EXPAND="${tmp_dir}/*.no_collapse.rmdup.bam"
+    map_damage
+    #merge these adjusted bam files
+    # Downweight the reads in the final file. 
+    # First 2 T's  = 2 quality
+    # First 2 G's =  2 quality
+    SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.bam"
+    parallel -j $CORES "ancient_filter.py -i {} -f \"bam\" -g -c -d 2 -o ${tmp_dir}/{/.}.ancient_filter.bam" ::: $SAM_SEARCH_EXPAND
+    SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.ancient_filter.bam"
+fi
 }
 
 # $@ for add or replace groups

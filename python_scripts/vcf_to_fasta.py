@@ -35,10 +35,12 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
             sample = sample.sample
             position = record.POS
             genotype=genotype.split('/')
-            pl = [int(o) for o in pl]
-            pl = pl.index(min(pl))
+            pheno_l = [int(o) for o in pl]
+            pl = pheno_l.index(min(pheno_l))
             # If pl is greater than zero
-            if(int(pl) == 2):
+            if(int(pl) >0 ):
+                if(pheno_l[0] < pheno_l[2]):
+                    continue
                 alt=record.ALT
                 no_alleles = 1 + len(alt)
                 ref=record.REF

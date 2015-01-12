@@ -37,25 +37,40 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
             # Check whether we have something different from the
             # reference.
             #print(position)
-            pl = [int(o) for o in pl]
-            pl = pl.index(min(pl))
+            pheno_l = [int(o) for o in pl]
+            pl = pheno_l.index(min(pheno_l))
             # If pl is greater than zero
       #      print(len(alt))
             genotype = genotype.split('/')
+            # TODO document bugs
             if(int(pl) > 0):
-                genotype =genotype[0]
+                if(pheno_l[0] < pheno_l[2]):
+                    continue
+                genotype =genotype[1]
                 real_gt=str(alt[int(genotype)-1])
                 temp_position=position
+                if(position == 499):
+                    print(pheno_l)
+                    print(s)
+                    print(real_gt)
+                    print(genotype)
                 #hard code for the palindromic sequence haplotype caller
                 # this is because it can be called in two placess that
                 # has exactly the same sequence. 
                 # Bwa must align to the first position.
                 if(species == 'human'):
-                    if (position == 955 and ref == "ACCCCC"):
-                        sample_lines[s].extend(["A.CCCCC"])
+                    # This is a dorky position
+                    if (position == 955 and  "ACCCC" in str(alt[0])):
+                        sample_lines[s].extend(["960.1CCCCC"])
                         continue
                     if(position == 8270 and ref=="CACCCCCTCT"):
                         sample_lines[s].extend([str(i)+"d" for i in range(8281,8290)])
+                        continue
+                    if(position == 285 and ref=="CAA"):
+                        sample_lines[s].extend([str(i) + "d" for i in range(290,293)])
+                        continue
+                    if(position == 247 and ref=="GA"):
+                        sample_lines[s].extend([str(249) + "d"])
                         continue
                 for i in range(0,max(len(real_gt),len(ref))):
                     if ( i == (len(real_gt) - 1) and i == (len(ref)- 1)):              
