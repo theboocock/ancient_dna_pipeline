@@ -39,7 +39,7 @@ def downweight_quality(quality,change_bases_c=None,change_bases_t=None):
         qual_filter=change_bases_t
     else:
         qual_filter=change_bases_c
-    quality=[chr(33 + 2) if filt else q for q, filt in zip(quality,qual_filter)]
+    quality=[chr(33 + 0) if filt else q for q, filt in zip(quality,qual_filter)]
     return(quality)
 
 def filter_fastq(input_file,output_file,downweight_number,ctot,gtoa):

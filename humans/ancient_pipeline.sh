@@ -2,7 +2,7 @@
 # run the best practice gatk analysis for calling variants.
 
 get_options(){
-    while getopts "AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
+    while getopts "C:AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
         case $opt in
         b)
             BAIL_POS=$OPTARG
@@ -55,6 +55,9 @@ get_options(){
         I)
             INDEL_ALIGNMENT=$OPTARG
             ;;
+        C)
+            CONTAMINATION_MAPPING=$OPTARG
+            ;;
         h)
             usage
             exit 1
@@ -83,6 +86,7 @@ cat << EOF
         -p <PMD THRESHOLD> default: do not use PMD
         -t <TRAITS FILE> default: no traits added to the nexus file
         -h print this output
+        -C Using contamination mapping, this is the sequence to extract
 EOF
 }
 
@@ -104,12 +108,16 @@ get_params(){
 
 }
 
+
+# This lets us ignore the 
+
+IGNORE_SECOND_READ="TRUE"
 DIR=$( dirname "$(readlink  $0)")
 reference="$DIR/../ref/rCRS.fa"
 PICARD="$DIR/../src/picard"
 GATK="$DIR/../src/gatk/GenomeAnalysisTK.jar"
 RSCRIPTS="$DIR/../rscripts"
-MIN_DEPTH=10
+MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
 XMX=-Xmx2g
@@ -129,6 +137,10 @@ START_POS="MAP_READS"
 get_options "$@"
 PATH=$PATH:$DIR/../bin
 #gcc -lgfortran
+if [[ $CONTAMINATION_MAPPING != "" ]]; then
+    echo "We have contamination mapping working"
+    echo $CONTAMINATION_MAPPING  
+fi
 #exit 1
 # Default settings if you don't specif anything, 
 SETUP_FILE=pipeline_setup.txt
@@ -175,22 +187,28 @@ fi
 SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.ancient_filter.bam"
 
 if [[ $START_POS = 'MAP_READS' ]]; then 
-    map_reads
+#    map_reads
     echo "DONE MAP READS" >> .fin_pipeline
-    sort_bam
+ #   sort_bam
     echo "DONE SORT BAM" >> .fin_pipeline
-    if [[ $MAP_DAMAGE != "TRUE" ]]; then
-        mark_duplicates
-        echo "DONE MARK DUPLICATES" >> .fin_pipeline
-    fi
-    index_bams
+  #  if [[ $MAP_DAMAGE != "TRUE" ]]; then
+  #      mark_duplicates
+  #      echo "DONE MARK DUPLICATES" >> .fin_pipeline
+   # fi
+   # index_bams
     add_and_or_replace_groups 
     echo "DONE REPLACE_GROUPS" >> .fin_pipeline
+    index_bams
+    echo "DONE INDEX BAMS" >> .fin_pipeline
+    if [[ $CONTAMINATION_MAPPING != "" ]]; then
+        remove_contaminants
+    fi
     store_bams
     echo "DONE STORE BAMS" >> .fin_pipeline
     index_bams
     echo "DONE INDEX BAMS" >> .fin_pipeline
 fi
+
 
 ##Run some map Damage
 ## TODO COMPARE HaplotypeCaller and Samtools

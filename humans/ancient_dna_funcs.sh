@@ -46,6 +46,7 @@ call_variants_samtools(){
 }
 
 haplotype_caller(){
+
     #ploidy 100 for mtDNA
     # ss vcf is the single sample VCF
     parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
@@ -69,19 +70,31 @@ haplocaller_combine(){
             --variant_index_parameter 128000 \
             -I {} \
             -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
-    else
-        # This sholud hopefully fix this part of the analysis 
-        # e.g running xapply and merging them both into the variant calling pipeline
-        MERGED_READS_1="$results_dir/bams/*yes_collapse.final.bam"
-    #    MERGED_READS_2="$results_dir/bams/*no_collapse.final.bam" 
-        parallel  -j ${CORES} "${JAVA7} -jar $XMX $GATK \
+    elif [[ $IGNORE_SECOND_READ = "TRUE" ]]; then
+        echo "Using the second_read"
+        ## TODO FIX this hard coding of paths.
+        SAM_SEARCH_EXPAND="$results_dir/bams/*final_contaminant_mapped.bam"
+        parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
             -T HaplotypeCaller \
             -R ${reference} \
             --emitRefConfidence GVCF --variant_index_type LINEAR \
             --variant_index_parameter 128000 \
-            -I {} \ 
+            -I {} \
+            -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
+    else 
+        # This sholud hopefully fix this part of the analysis 
+        # e.g running xapply and merging them both into the variant calling pipeline
+        MERGED_READS_1=$results_dir/bams/*yes_collapse.final.bam
+       MERGED_READS_2=$results_dir/bams/*no_collapse.final.bam 
+       parallel -j 1 --xapply echo {1} {2} ::: $MERGED_READS_1 ::: $MERGED_READS_2
+       parallel  -j ${CORES} --xapply "${JAVA7} -jar $XMX $GATK \
+            -T HaplotypeCaller \
+            -R ${reference} \
+            --emitRefConfidence GVCF --variant_index_type LINEAR \
+            --variant_index_parameter 128000 \
+            -I {1} -I {2}  \
             --output_mode EMIT_ALL_SITES --allSitePLs \
-            -o ${tmp_dir}/{/.}.gvcf" ::: $MERGED_READS_1 
+            -o ${tmp_dir}/{1/.}.gvcf" ::: $MERGED_READS_1 ::: $MERGED_READS_2
     fi
     $JAVA7 -jar -Xmx4g $GATK \
         -T GenotypeGVCFs \
@@ -114,7 +127,7 @@ vcf_filter(){
 }
 ancient_filter(){
     ancient_filter.py -d 2 --c2t --g2a -i {} -o $temp_results/{/.}.anc.fq
-
+    
 }
 indel_realignment(){
     parallel --env PATH -j $CORES "$JAVA7 $XMX -jar $GATK \
@@ -162,7 +175,12 @@ fasta_to_nexus(){
    seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta.fa  $results_dir/temp.nex
    cat $results_dir/temp.nex | tr -d "'" > $results_dir/final.nex  
    seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta_filtered.fa ${results_dir}/temp.nex 
-   cat $results_dir/temp.nex | tr -d "'"  > $results_dir/final_filter.nex  
+   cat $results_dir/temp.nex | tr -d "'"  > $results_dir/final_filter.nex 
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/mus_fasta_filt.fa  $results_dir/temp.nex
+   cat $results_dir/temp.nex | tr -d "'" > $results_dir/mus_filt.nex  
+   seqmagick convert --output-format nexus --alphabet dna ${results_dir}/mus_fasta.fa ${results_dir}/.nex 
+   cat $results_dir/temp.nex | tr -d "'"  > $results_dir/mus.nex 
+
 }
 align_muscle(){
     muscle -in $results_dir/final_fasta_filtered_indels.fa -out $results_dir/mus_fasta_filt.fa
@@ -198,7 +216,7 @@ add_and_or_replace_groups(){
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name VALIDATION_STRINGENCY=LENIENT 
         fi
     done < $SETUP_FILE
- SAM_SEARCH_EXPAND="${tmp_dir}/*yes_collapse.final.bam"
+ SAM_SEARCH_EXPAND="${tmp_dir}/*.final.bam"
  echo $SAM_SEARCH_EXPAND
 }
 
@@ -324,3 +342,7 @@ fi
 #    echo "Freebayes run :)"
 #fi
 
+remove_contaminants(){
+    parallel -j ${CORES} "samtools view -bh {} \"${CONTAMINATION_MAPPING}\" > ${tmp_dir}/{/.}_contaminant_mapped.bam" ::: $SAM_SEARCH_EXPAND
+    SAM_SEARCH_EXPAND="${tmp_dir}/*_contaminant_mapped.bam"
+}

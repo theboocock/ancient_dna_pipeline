@@ -12,8 +12,12 @@ coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=
     xlim_coord=c(1,16569)
   }
   require(ggplot2)
+  coverage_new = data.frame(pos=c(1:xlim_coord[2]),cov=rep(0,xlim_coord[2]))
+  for (i in 1:nrow(coverage)){
+      coverage_new[coverage[i,2],2] = coverage[i,4] 
+  }
   gg=ggplot()
-  cov_data=data.frame(x=coverage[,2],y=(coverage[,4]))
+  cov_data=data.frame(x=coverage_new[,1],y=(coverage_new[,2]))
   gg = gg + geom_area(data=cov_data,aes(x=x,y=y),colour='blue', stat="identity")
   gg = gg + coord_cartesian(xlim=xlim_coord)
   if(!is.null(sample_name)){
@@ -44,4 +48,5 @@ coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=
   plot(gg)
   dev.off()
 }
+
 

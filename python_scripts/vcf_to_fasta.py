@@ -11,7 +11,7 @@
 import os,re,vcf,argparse
 from pyfasta import Fasta
 
-def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
+def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_depth):
     # First part is to get the fasta sequence then atke each position 
     # and then alter the reference as necessary for each sample.
     # Because everyone will have different SNPs.
@@ -30,10 +30,13 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
         for sample in record.samples:
             genotype = sample['GT']
             pl = sample['PL']
-            if(genotype == None):
+            position = record.POS
+            temp_position = position - 1 
+            dp = sample['DP']
+            if(genotype == None or float(dp) <= min_depth):
+                sample_fasta[sample.sample][temp_position] = 'N'
                 continue
             sample = sample.sample
-            position = record.POS
             genotype=genotype.split('/')
             pheno_l = [int(o) for o in pl]
             pl = pheno_l.index(min(pheno_l))
@@ -45,7 +48,6 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels):
                 no_alleles = 1 + len(alt)
                 ref=record.REF
                 genotype = genotype[0]
-                temp_position = position - 1 
                 real_gt =str(alt[int(genotype)-1])
                 if(species == 'human'):
                     if(position == 8270 and ref=="CACCCCCTCT"):
@@ -84,6 +86,8 @@ def main():
                              "Currently accepted values are human and dog")
     parser.add_argument('--use-indels',dest='use_indels',action="store_true",
                         help="Do not use indels in the analysis", default=False)
+    parser.add_argument('--min-depth',dest="min_depth", 
+                        default=2)
     args = parser.parse_args()
     assert  args.fasta_output is not None, \
             "-o or --output is required"
@@ -93,6 +97,6 @@ def main():
             "-r or --reference is required"
     if(args.use_indels is None):
         args.use_indels = False
-    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species,args.use_indels) 
+    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species,args.use_indels, args.min_depth) 
 if __name__ == "__main__":
     main()

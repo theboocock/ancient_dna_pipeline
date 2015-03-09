@@ -36,17 +36,17 @@ fi
 
 #ls $DATA_FOLDER
 if [[ $PROCESSED_OR_TRIMMED = 'trimmed' ]]; then
-    ls $1/*R1*trimmed | cut -d '_' -f 2  > samples_list.txt
+    ls $1/*R1*trimmed | cut -d '_' -f 2 | xargs basename > samples_list.txt
     for i in $1/*_R1_001.fastq.trimmed ;  do echo ${i} `echo ${i} | sed  's/R1_001/R2_001/g'` >> line_setup.txt; done 
 elif [[ $PROCESSED_OR_TRIMMED = 'processed' ]]; then
-    ls $1/*R1*fastq | cut -d '_' -f 2  > samples_list.txt
+    ls $1/*R1*fastq | cut -d '_' -f 2 |  xargs basename > samples_list.txt
     for i in $1/*_R1_001.fastq ; do echo ${i} `echo ${i} | sed 's/R1_001/R2_001/g'` >> line_setup.txt; done
 elif
     [[ $PROCESSED_OR_TRIMMED = 'raw' ]]; then
-     ls $1/*R1*fastq | cut -d '_' -f 1 | sed "s/^\.\///g" > samples_list.txt
+     ls $1/*R1*fastq | cut -d '_' -f 1 | sed "s/^\.\///g"  > samples_list.txt
      for i in $1/*_R1_001.fastq ; do echo ${i} `echo ${i} | sed 's/R1_001/R2_001/g'` >> line_setup.txt; done
 fi
 paste -d ' ' samples_list.txt line_setup.txt > $OUTPUT
-rm line_setup.txt samples_list.txt
+#iirm line_setup.txt samples_list.txt
 
 

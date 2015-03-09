@@ -7,9 +7,11 @@ import pysam
 import argparse
 
 def main():
-    args = argparse.ArgumentParser(description="Exponential decay Script for a bam file")
-    args.add_argument('bam',help="Bam input file")
-    exponential_decay
+    parser = argparse.ArgumentParser(description="Exponential decay Script for a bam file")
+    parser.add_argument('bam',help="Bam input file")
+    args = parser.parse_args()
+    
+    exponential_decay()
 
 if __name__=="__main__":
     main():
