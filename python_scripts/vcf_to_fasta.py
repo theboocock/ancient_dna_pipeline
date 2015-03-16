@@ -11,7 +11,22 @@
 import os,re,vcf,argparse
 from pyfasta import Fasta
 
-def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_depth):
+def is_ga_or_ct(ref,alt):
+    if(len(ref) == 1 and len(alt) == 1):
+        alt = alt[0]
+        if(ref == "C" and alt == "T"):
+            return True
+        elif(ref == "T" and alt == "C"):
+            return True
+        elif(ref == "G" and alt == "A"):
+            return True
+        elif(ref == "A" and alt == "G"):
+            return True
+    else:
+        return False
+
+
+def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_depth,min_probs=0.9):
     # First part is to get the fasta sequence then atke each position 
     # and then alter the reference as necessary for each sample.
     # Because everyone will have different SNPs.
@@ -24,29 +39,44 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
     sample_fasta = {}
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     samples = vcf_reader.samples
+    vcf.Writer(sys.stdout
     for sample in samples:
         sample_fasta[sample] = full_sequence[:]
     for record in vcf_reader:
         for sample in record.samples:
             genotype = sample['GT']
-            pl = sample['PL']
+            try:
+                pl = sample['PL']
+                pheno_l = [int(o) for o in pl]
+                pl = pheno_l.index(min(pheno_l))
+            except KeyError:
+                print "Must be a beagle input try"
+                gp = sample['GP']
+                g_l = [float(o) for o in gp]
+                if( max(g_l) < max_probs):
+                    sample_fasta[sample.sample][temp_position] = 'N'
+                gl = g_l.index(max(g_l))
+                pl = gl
             position = record.POS
             temp_position = position - 1 
             dp = sample['DP']
             if(genotype == None or float(dp) <= min_depth):
                 sample_fasta[sample.sample][temp_position] = 'N'
+                # Just to ensure, the bad thing doesn't occur
+                # Overwriting the N call.
+                pl = 0
                 continue
             sample = sample.sample
             genotype=genotype.split('/')
-            pheno_l = [int(o) for o in pl]
-            pl = pheno_l.index(min(pheno_l))
             # If pl is greater than zero
+            ref=record.REF
+            alt=record.ALT
+            # Gl is substituted
             if(int(pl) >0 ):
-                if(pheno_l[0] < pheno_l[2]):
-                    continue
-                alt=record.ALT
+                if (is_ga_or_ct(ref, alt)):
+                    if(pheno_l[0] < pheno_l[2]):
+                        continue
                 no_alleles = 1 + len(alt)
-                ref=record.REF
                 genotype = genotype[0]
                 real_gt =str(alt[int(genotype)-1])
                 if(species == 'human'):
@@ -87,7 +117,7 @@ def main():
     parser.add_argument('--use-indels',dest='use_indels',action="store_true",
                         help="Do not use indels in the analysis", default=False)
     parser.add_argument('--min-depth',dest="min_depth", 
-                        default=2)
+                        default=1)
     args = parser.parse_args()
     assert  args.fasta_output is not None, \
             "-o or --output is required"

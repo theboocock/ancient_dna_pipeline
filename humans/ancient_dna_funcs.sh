@@ -120,7 +120,7 @@ vcf_filter(){
         -T VariantFiltration \
         -R $reference \
         -V $vcf_output \
-        --filterExpression "QD < 2.0 || MQ < 20.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
+        --filterExpression "MQ < 20.0" \
         --filterName "my_snp_filter" \
         -o $results_dir/$SETUP_FILE.temp.vcf 
     cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf

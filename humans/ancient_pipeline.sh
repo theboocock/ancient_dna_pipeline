@@ -187,15 +187,15 @@ fi
 SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.ancient_filter.bam"
 
 if [[ $START_POS = 'MAP_READS' ]]; then 
-#    map_reads
+    map_reads
     echo "DONE MAP READS" >> .fin_pipeline
- #   sort_bam
+    sort_bam
     echo "DONE SORT BAM" >> .fin_pipeline
-  #  if [[ $MAP_DAMAGE != "TRUE" ]]; then
-  #      mark_duplicates
-  #      echo "DONE MARK DUPLICATES" >> .fin_pipeline
-   # fi
-   # index_bams
+    if [[ $MAP_DAMAGE != "TRUE" ]]; then
+        mark_duplicates
+        echo "DONE MARK DUPLICATES" >> .fin_pipeline
+    fi
+    index_bams
     add_and_or_replace_groups 
     echo "DONE REPLACE_GROUPS" >> .fin_pipeline
     index_bams
@@ -206,7 +206,6 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     store_bams
     echo "DONE STORE BAMS" >> .fin_pipeline
     index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
 fi
 
 
