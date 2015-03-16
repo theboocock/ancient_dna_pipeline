@@ -39,42 +39,51 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
     sample_fasta = {}
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     samples = vcf_reader.samples
-    vcf.Writer(sys.stdout
     for sample in samples:
         sample_fasta[sample] = full_sequence[:]
     for record in vcf_reader:
         for sample in record.samples:
             genotype = sample['GT']
+            is_beagle = False
             try:
                 pl = sample['PL']
                 pheno_l = [int(o) for o in pl]
+                dp = sample['DP']
                 pl = pheno_l.index(min(pheno_l))
-            except KeyError:
-                print "Must be a beagle input try"
+                if(genotype == None or float(dp) <= min_depth):
+                    sample_fasta[sample.sample][temp_position] = 'N'
+                    # Just to ensure, the bad thing doesn't occur
+                    # Overwriting the N call.
+                    continue
+            except AttributeError:
+                is_beagle = True
                 gp = sample['GP']
                 g_l = [float(o) for o in gp]
-                if( max(g_l) < max_probs):
+                if( max(g_l) < min_probs):
                     sample_fasta[sample.sample][temp_position] = 'N'
-                gl = g_l.index(max(g_l))
-                pl = gl
+                    continue
+                pl = g_l.index(max(g_l))
+            except TypeError:
+                sample_fasta[sample.sample][temp_position] = 'N'
+                continue
             position = record.POS
             temp_position = position - 1 
-            dp = sample['DP']
-            if(genotype == None or float(dp) <= min_depth):
-                sample_fasta[sample.sample][temp_position] = 'N'
-                # Just to ensure, the bad thing doesn't occur
-                # Overwriting the N call.
-                pl = 0
-                continue
             sample = sample.sample
-            genotype=genotype.split('/')
+            if not is_beagle:
+                genotype=genotype.split('/')
+            else:
+                genotype=genotype.split("|")
+
             # If pl is greater than zero
             ref=record.REF
             alt=record.ALT
             # Gl is substituted
             if(int(pl) >0 ):
                 if (is_ga_or_ct(ref, alt)):
-                    if(pheno_l[0] < pheno_l[2]):
+                    if(is_beagle):
+                        if(g_l[0] > g_l[2]):
+                            continue
+                    elif(pheno_l[0] < pheno_l[2]):
                         continue
                 no_alleles = 1 + len(alt)
                 genotype = genotype[0]

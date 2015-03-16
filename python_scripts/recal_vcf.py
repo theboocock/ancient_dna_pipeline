@@ -29,26 +29,27 @@ def is_ga_or_ct(ref,alt):
 def recal_vcf(input_vcf):
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
-    f_keys = vcf_reader.formats.keys()
     for record in vcf_reader:
         temp_record = record
-        print(type(record.samples))
         for i, sample in enumerate(record.samples):
             idx = 0 
             ref = record.REF
             alt = record.ALT
-            sample.data = collections.namedtuple("CallData",f_keys)
-            f_vals = [sample,data[vx] for vx in range(len(f_keys))]
+            #record.samples[i].data = collections.namedtuple("CallData",f_keys)
+           # print(sample)
+            f_keys = (record.samples[i].data._fields)
+            f_vals = [ record.samples[i][vx] for vx in (f_keys)]
             handy_dict = dict(zip(f_keys,f_vals))
             if(is_ga_or_ct(ref,alt)):
                 pl = sample['PL']
-                pheno_l = [int(o) for o in pl]
-                if(pheno_l[0] < pheno_l[2]): 
-                    handy_dict['GT'] = '0/0'
-                else:
-                    handy_dict['GT'] = '1/1'
+                if( pl is not None):
+                    pheno_l = [int(o) for o in pl]
+                    if(pheno_l[0] < pheno_l[2]): 
+                        handy_dict['GT'] = '0/0'
+                    else:
+                        handy_dict['GT'] = '1/1'
             new_values = [handy_dict[x] for x in f_keys]
-            record.samples[i].data = record.samples[i]._make(new_values)
+            record.samples[i].data = record.samples[i].data._make(new_values)
         vcf_writer.write_record(record)
 
 def main():

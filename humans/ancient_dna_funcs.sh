@@ -168,6 +168,10 @@ vcf_to_fasta(){
     # Add vcf_to_fasta
     vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels
     vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
+    if [[ $IMPUTATION == "TRUE" ]]; then
+        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute.fa -r $reference 
+        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference 
+    fi
     # Strict Filtering to ancient_strict
 }
 fasta_to_nexus(){
@@ -189,7 +193,7 @@ align_muscle(){
 #make_coverage_plots.py has hardcoded settings for coverage
 
 coverage_plots(){
-    rm coverage/coverage_data.txt
+    /m coverage/coverage_data.txt
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.rmdup.bam
     make_coverage_plots.pl -- $tmp_dir/*.cov > $results_dir/coverage_plots.ps
 
@@ -230,6 +234,13 @@ store_bams(){
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 }
 
+beagle_imputation(){
+    vcf_input=$results_dir/$SETUP_FILE.filter.vcf  
+    java -jar $BEAGLE gt=${vcf_input} out=tmp
+    gzcat tmp.vcf.gz > $results_dir/$SETUP_FILE.impute.vcf
+    final_vcf=$results_dir/$SETUP_FILE.filter.vcf
+}
+
 #remove_g_a_c_t(){
    #cat $results_dir/pipeline_setup.txt.filter.vcf | ack -v  "G\tA|C\tT" > $results_dir/ancient_strict.vcf
    # vcf_to_fasta.py -i $results_dir/ancient_strict.vcf -o ${results_dir}/ancient_strict.fa -r ${reference}
@@ -263,13 +274,13 @@ do
             else
                 bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.collapsed > tmp1.sai
                 bwa samse $reference tmp1.sai $tmp_dir/$pe_one.collapsed > $tmp_dir/$output.collapse.sam 2> $tmp_dir/$output.collapse.bwa.err
-                bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.p1 > tmp1.sai 
-                bwa aln -t $CORES $extra_arg_bwa $reference  $tmp_dir/$pe_two.p2 > tmp2.sai 
-                bwa sampe $reference tmp1.sai tmp2.sai $tmp_dir/$pe_one.p1 $tmp_dir/$pe_two.p2 > $tmp_dir/$output.no_collapse.sam 
-                samtools view -Sb $tmp_dir/$output.no_collapse.sam > $tmp_dir/$output.no_collapse.bam
-                samtools sort $tmp_dir/$output.no_collapse.bam $tmp_dir/$output.no_collapse.sorted
+   #             bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.p1 > tmp1.sai 
+    #            bwa aln -t $CORES $extra_arg_bwa $reference  $tmp_dir/$pe_two.p2 > tmp2.sai 
+  #              bwa sampe $reference tmp1.sai tmp2.sai $tmp_dir/$pe_one.p1 $tmp_dir/$pe_two.p2 > $tmp_dir/$output.no_collapse.sam 
+ #               samtools view -Sb $tmp_dir/$output.no_collapse.sam > $tmp_dir/$output.no_collapse.bam
+#                samtools sort $tmp_dir/$output.no_collapse.bam $tmp_dir/$output.no_collapse.sorted
                 # Mark Duplicates Paired END
-                java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT=${tmp_dir}/$output.no_collapse.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.rmdup.bam METRICS_FILE=${tmp_dir}/$output.no_callapse.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT
+#                java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT=${tmp_dir}/$output.no_collapse.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.rmdup.bam METRICS_FILE=${tmp_dir}/$output.no_callapse.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT
                 #FilterUniqueBam
                 samtools view -Sb $tmp_dir/$output.collapse.sam > $tmp_dir/$output.collapse.bam
                 samtools sort $tmp_dir/$output.collapse.bam $tmp_dir/$output.collapse.sorted
@@ -297,8 +308,8 @@ SAM_SEARCH_EXPAND="${tmp_dir}/*.sam"
 if [[ $MAP_DAMAGE != "" ]]; then
     SAM_SEARCH_EXPAND="${tmp_dir}/*.collapse.rmdup.bam"
     map_damage
-    SAM_SEARCH_EXPAND="${tmp_dir}/*.no_collapse.rmdup.bam"
-    map_damage
+    #SAM_SEARCH_EXPAND="${tmp_dir}/*.no_collapse.rmdup.bam"
+    #map_damage
     #merge these adjusted bam files
     # Downweight the reads in the final file. 
     # First 2 T's  = 2 quality

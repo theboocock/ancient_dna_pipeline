@@ -2,8 +2,11 @@
 # run the best practice gatk analysis for calling variants.
 
 get_options(){
-    while getopts "C:AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
+    while getopts "tC:AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
         case $opt in
+        t)
+            IMPUTATION="TRUE"
+            ;;    
         b)
             BAIL_POS=$OPTARG
             ;;
@@ -116,6 +119,7 @@ DIR=$( dirname "$(readlink  $0)")
 reference="$DIR/../ref/rCRS.fa"
 PICARD="$DIR/../src/picard"
 GATK="$DIR/../src/gatk/GenomeAnalysisTK.jar"
+BEAGLE="$DIR/../src/beagle/beagle.jar"
 RSCRIPTS="$DIR/../rscripts"
 MIN_DEPTH=2
 #Specify the number of cores to use
@@ -141,6 +145,10 @@ if [[ $CONTAMINATION_MAPPING != "" ]]; then
     echo "We have contamination mapping working"
     echo $CONTAMINATION_MAPPING  
 fi
+
+if [[ $IMPUTATION = "TRUE" ]]; then
+    echo "Imputation is working"
+fi 
 #exit 1
 # Default settings if you don't specif anything, 
 SETUP_FILE=pipeline_setup.txt
@@ -241,6 +249,13 @@ echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
 #    remove_g_a_c_t
 #fi
 # Turn them all the fasta
+if [[ $IMPUTATION == "TRUE" ]]; then
+    beagle_imputation
+fi
+
+vcf_to_haplogrep
+echo "DONE VCF HAPLOGREP" >> .fin_pipeline
+
 vcf_to_fasta
 # VCF_to_fasta_before muscle
 align_muscle
