@@ -240,8 +240,6 @@ haplocaller_combine
 echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 vcf_filter
 echo "DONE VCF FILTER" >> .fin_pipeline
-vcf_to_haplogrep
-echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 coverage_plots_R
 echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
 #
@@ -250,6 +248,10 @@ echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
 #fi
 # Turn them all the fasta
 if [[ $IMPUTATION == "TRUE" ]]; then
+    # Imputation consists of two distinct steps,
+    # Recalling the VCF, then using that with beagle imputation
+    #
+    recal_vcf 
     beagle_imputation
 fi
 

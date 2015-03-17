@@ -48,7 +48,7 @@ def recal_vcf(input_vcf):
                         handy_dict['GT'] = '0/0'
                     else:
                         handy_dict['GT'] = '1/1'
-            new_values = [handy_dict[x] for x in f_keys]
+            new_values = [ handy_dict['GT'] if  x == 'GT' else None for x in f_keys]
             record.samples[i].data = record.samples[i].data._make(new_values)
         vcf_writer.write_record(record)
 

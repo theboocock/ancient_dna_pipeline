@@ -10,8 +10,6 @@ ancient_dna_pipeline
 ====================
 
 
-# IDEAS
 
-Mask fasta Ns based on coverage. 
-
+Simple pipeline, which takes FASTA files to the end of pipeline - for easy processing of DNA data.
 

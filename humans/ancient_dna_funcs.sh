@@ -17,8 +17,10 @@
 
 #input setup file 
 annotate_traits(){
-    parallel -j ${CORES} "make_traits.py -i {} -t $TRAITS_FILE -o ${results_dir}/{/.}.traits.nex" ::: $results_dir/ancient_strict.nex $results_dir/final.nex $results_dir/final_filter.nex 
+    parallel -j ${CORES} "make_traits.py -i {} -t $TRAITS_FILE -o ${results_dir}/{/.}.traits.nex" :::
 }
+
+
 
 sort_bam(){    
 parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/SortSam.jar INPUT={} OUTPUT={.}.sorted.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
@@ -103,6 +105,7 @@ haplocaller_combine(){
 do
     echo "--variant ${i}"
 done` \
+    -stand_call_conf 10.0 \
     -o ${vcf_output}
     $JAVA7 -jar -Xmx4g $GATK \
         -T GenotypeGVCFs \
@@ -170,7 +173,7 @@ vcf_to_fasta(){
     vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
     if [[ $IMPUTATION == "TRUE" ]]; then
         vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute.fa -r $reference 
-        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference 
+        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference  --use-indels
     fi
     # Strict Filtering to ancient_strict
 }
@@ -233,9 +236,13 @@ store_bams(){
     parallel -j $CORES "cp {} $results_dir/bams/{/.}.bam" ::: $SAM_SEARCH_EXPAND
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 }
+recal_vcf(){
+    vcf_input=$results_dir/$SETUP_FILE.filter 
+    recal_vcf.py ${vcf_input}.vcf > ${vcf_input}.recal.vcf 
+}
 
 beagle_imputation(){
-    vcf_input=$results_dir/$SETUP_FILE.filter.vcf  
+    vcf_input=$results_dir/$SETUP_FILE.filter.recal.vcf  
     java -jar $BEAGLE gt=${vcf_input} out=tmp
     gzcat tmp.vcf.gz > $results_dir/$SETUP_FILE.impute.vcf
     final_vcf=$results_dir/$SETUP_FILE.filter.vcf
