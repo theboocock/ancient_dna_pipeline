@@ -26,7 +26,7 @@ get_options(){
             XMX=-Xmx${OPTARG}
             ;;
         M)
-            MAPPER=$OPTARG
+            MERGED_READS_ONLY="TRUE"
             ;;
         r) 
             reference=$OPTARG
@@ -118,7 +118,6 @@ get_params(){
 
 # This lets us ignore the 
 
-IGNORE_SECOND_READ="TRUE"
 DIR=$( dirname "$(readlink  $0)")
 reference="$DIR/../ref/rCRS.fa"
 PICARD="$DIR/../src/picard"
@@ -141,11 +140,16 @@ SAM_SEARCH_EXPAND=*.sam
 #Read group stuff
 END=pe
 RGPL=Illumina
+TEST_FREEBAYES="TRUE"
 START_POS="MAP_READS"
 PLOIDY=1
 get_options "$@"
 PATH=$PATH:$DIR/../bin
 #gcc -lgfortran
+if [[ $TEST_FREEBAYES = "TRUE" ]]; then
+    echo "We have testing freebayse working"
+fi
+
 if [[ $CONTAMINATION_MAPPING != "" ]]; then
     echo "We have contamination mapping working"
     echo $CONTAMINATION_MAPPING  
@@ -154,6 +158,9 @@ fi
 if [[ $IMPUTATION = "TRUE" ]]; then
     echo "Imputation is working"
 fi 
+if [[ $MERGED_READS_ONLY = "" ]]; then
+    echo "We are not just using the merged reads"
+fi
 #exit 1
 # Default settings if you don't specif anything, 
 SETUP_FILE=pipeline_setup.txt
@@ -175,6 +182,8 @@ mkdir -p $results_dir/damage
 mkdir -p $results_dir/coverage
 mkdir -p $results_dir/pmd
 mkdir -p $results_dir/bams
+mkdir -p $results_dir/contamination
+mkdir -p $results_dir/merged
 echo $SAM_SEARCH_EXPAND
 #Source after the environment has been setup
 if [[ $PMD != "" ]]; then
@@ -217,6 +226,7 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     index_bams
     echo "DONE INDEX BAMS" >> .fin_pipeline
     if [[ $CONTAMINATION_MAPPING != "" ]]; then
+        save_contaminants
         remove_contaminants
     fi
     store_bams
@@ -240,7 +250,7 @@ if [[ $PMD != "" ]]; then
     index_bams
     echo "DONE INDEX BAMS" >> .fin_pipeline
 fi
-if [[ $MINIMAL == "TRUE" ]]; then
+if [[ $MINIMAL = "TRUE" ]]; then
     haplotype_caller
     echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
 fi
@@ -248,8 +258,6 @@ haplocaller_combine
 echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 vcf_filter
 echo "DONE VCF FILTER" >> .fin_pipeline
-vcf_to_haplogrep
-echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 coverage_plots_R
 echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
 #
@@ -257,7 +265,11 @@ echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
 #    remove_g_a_c_t
 #fi
 # Turn them all the fasta
-if [[ $IMPUTATION == "TRUE" ]]; then
+if [[ $IMPUTATION = "TRUE" ]]; then
+    # Imputation consists of two distinct steps,
+    # Recalling the VCF, then using that with beagle imputation
+    #
+    recal_vcf 
     beagle_imputation
 fi
 

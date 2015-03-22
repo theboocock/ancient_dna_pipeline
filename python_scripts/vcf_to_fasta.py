@@ -26,7 +26,7 @@ def is_ga_or_ct(ref,alt):
         return False
 
 
-def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_depth,min_probs=0.9):
+def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_depth,free_bayes,main_sequences="gi|17737322|ref|NC_002008.4| Canis lupus familiaris mitochondrion, complete genome", min_probs=0.9):
     # First part is to get the fasta sequence then atke each position 
     # and then alter the reference as necessary for each sample.
     # Because everyone will have different SNPs.
@@ -35,13 +35,15 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
     # but plan to extend this in the future to full genome
     # gets the full genomes sequences and currently assumes 
     # that the fasta only contains one sequence.
-    full_sequence = list(f[f.keys()[0]])
+    full_sequence = list(f[main_sequences])
     sample_fasta = {}
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     samples = vcf_reader.samples
     for sample in samples:
         sample_fasta[sample] = full_sequence[:]
     for record in vcf_reader:
+        position = record.POS
+        temp_position = position - 1 
         for sample in record.samples:
             genotype = sample['GT']
             is_beagle = False
@@ -56,20 +58,27 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
                     # Overwriting the N call.
                     continue
             except AttributeError:
-                is_beagle = True
-                gp = sample['GP']
-                g_l = [float(o) for o in gp]
-                if( max(g_l) < min_probs):
-                    sample_fasta[sample.sample][temp_position] = 'N'
-                    continue
-                pl = g_l.index(max(g_l))
+                if(not free_bayes):
+                    is_beagle = True
+                    gp = sample['GP']
+                    g_l = [float(o) for o in gp]
+                    if( max(g_l) < min_probs):
+                        sample_fasta[sample.sample][temp_position] = 'N'
+                        continue
+                    pl = g_l.index(max(g_l))
+                else:
+                    if(genotype == '.' or genotype == None):
+                        sample_fasta[sample.sample][temp_position] = 'N'
+                        continue
             except TypeError:
                 sample_fasta[sample.sample][temp_position] = 'N'
                 continue
-            position = record.POS
-            temp_position = position - 1 
             sample = sample.sample
-            if not is_beagle:
+            if free_bayes:
+                genotype=genotype[0]
+                if(genotype == '0'):
+                    continue
+            elif not is_beagle:
                 genotype=genotype.split('/')
             else:
                 genotype=genotype.split("|")
@@ -78,15 +87,18 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
             ref=record.REF
             alt=record.ALT
             # Gl is substituted
-            if(int(pl) >0 ):
+            if(free_bayes or int(pl) >0):
                 if (is_ga_or_ct(ref, alt)):
-                    if(is_beagle):
-                        if(g_l[0] > g_l[2]):
+                    if(not free_bayes):
+                        if(is_beagle):
+                            if(g_l[0] > g_l[2]):
+                                continue
+                        elif(pheno_l[0] < pheno_l[2]):
                             continue
-                    elif(pheno_l[0] < pheno_l[2]):
-                        continue
                 no_alleles = 1 + len(alt)
-                genotype = genotype[0]
+                if not free_bayes:
+                    genotype = genotype[0]
+
                 real_gt =str(alt[int(genotype)-1])
                 if(species == 'human'):
                     if(position == 8270 and ref=="CACCCCCTCT"):
@@ -95,6 +107,9 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq, species, use_indels, min_dept
                 for i in range(0,max(len(real_gt),len(ref))):
                     if ( i == (len(real_gt) - 1) and i == (len(ref)- 1)):              
                         gt = real_gt[i]
+                        if(free_bayes and len(str(alt)) > 1):
+                            real_gt = str(alt[0])
+                            print sample_fasta[sample][temp_position ] 
                         sample_fasta[sample][temp_position] = gt
                     elif(len(real_gt) > len(ref) and i != 0):
                         if(use_indels):
@@ -127,6 +142,7 @@ def main():
                         help="Do not use indels in the analysis", default=False)
     parser.add_argument('--min-depth',dest="min_depth", 
                         default=5)
+    parser.add_argument('--free-bayes',dest='free_bayes',default=False,action="store_true")
     args = parser.parse_args()
     assert  args.fasta_output is not None, \
             "-o or --output is required"
@@ -136,6 +152,6 @@ def main():
             "-r or --reference is required"
     if(args.use_indels is None):
         args.use_indels = False
-    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species,args.use_indels, args.min_depth) 
+    vcf_to_fasta(args.vcf_input, args.fasta_output, args.reference, args.species,args.use_indels, args.min_depth,args.free_bayes) 
 if __name__ == "__main__":
     main()
