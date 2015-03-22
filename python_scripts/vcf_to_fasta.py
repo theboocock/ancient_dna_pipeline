@@ -126,7 +126,7 @@ def main():
     parser.add_argument('--use-indels',dest='use_indels',action="store_true",
                         help="Do not use indels in the analysis", default=False)
     parser.add_argument('--min-depth',dest="min_depth", 
-                        default=1)
+                        default=5)
     args = parser.parse_args()
     assert  args.fasta_output is not None, \
             "-o or --output is required"

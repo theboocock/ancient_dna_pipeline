@@ -120,7 +120,7 @@ vcf_filter(){
         -T VariantFiltration \
         -R $reference \
         -V $vcf_output \
-        --filterExpression "MQ < 20.0" \
+        --filterExpression "MQ < 20.0 | DP < 3" \
         --filterName "my_snp_filter" \
         -o $results_dir/$SETUP_FILE.temp.vcf 
     cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf
@@ -193,7 +193,7 @@ align_muscle(){
 #make_coverage_plots.py has hardcoded settings for coverage
 
 coverage_plots(){
-    /m coverage/coverage_data.txt
+    rm coverage/coverage_data.txt
     parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.rmdup.bam
     make_coverage_plots.pl -- $tmp_dir/*.cov > $results_dir/coverage_plots.ps
 
@@ -269,6 +269,8 @@ do
                 AdapterRemoval --collapse --file1 ${pe_one} --file2 ${pe_two} --outputstats ${pe_one}.stats --trimns --outputcollapsed $tmp_dir/${pe_one}.collapsed --minlength 25 --output1 $tmp_dir/$pe_one.p1 --output2 $tmp_dir/${pe_two}.p2 --mm 3  --minquality 20   --trimqualities
             fi
             if [[ $MAP_DAMAGE = "" ]]; then
+            echo $pe_one
+            echo $pe_two
             # -M is essensetion for picard compatibility
             bwa mem -M -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
             else

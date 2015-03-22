@@ -10,7 +10,7 @@ from optparse import OptionParser
 # especially the 1kg and merriman sequences data.
 # 
 
-def vcf_to_haplogrep(vcf_input,hgrep_output,species):
+def vcf_to_haplogrep(vcf_input,hgrep_output,species,min_depth):
     vcf_reader = vcf.Reader(open(vcf_input,'r'),strict_whitespace=True)
     hgrep_o = open(hgrep_output,'w')
     hgrep_o.write('SampleId\tRange\tHaploGroup\tPolymorphisms (delimited by tab)\n')
@@ -32,12 +32,19 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
         for sample in record.samples:
             genotype=sample['GT']
             pl = sample['PL']
-            if(genotype == None): continue
+            dp = sample['DP']
+            if(genotype == None or float(dp) <= min_depth):
+                print(sample)
+                continue
             s = sample.sample
             # Check whether we have something different from the
             # reference.
             #print(position)
-            pheno_l = [int(o) for o in pl]
+            try:
+                pheno_l = [int(o) for o in pl]
+            except:
+                print(genotype)
+                continue
             pl = pheno_l.index(min(pheno_l))
             # If pl is greater than zero
       #      print(len(alt))
@@ -49,11 +56,6 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species):
                 genotype =genotype[1]
                 real_gt=str(alt[int(genotype)-1])
                 temp_position=position
-                if(position == 499):
-                    print(pheno_l)
-                    print(s)
-                    print(real_gt)
-                    print(genotype)
                 #hard code for the palindromic sequence haplotype caller
                 # this is because it can be called in two placess that
                 # has exactly the same sequence. 
@@ -105,8 +107,9 @@ def main():
     parser.add_option('-i','--vcf',dest="vcf_input",help="VCF input file")
     parser.add_option('-o','--output',dest="vcf_output",help="Output haplogrep file")
     parser.add_option('-s','--species',dest='species',help='Species needed for rCRS fix',default='human')
+    parser.add_option('--min-depth',dest="min_depth", default=1)
     (options,args) = parser.parse_args()
-    vcf_to_haplogrep(options.vcf_input,options.vcf_output,options.species)
+    vcf_to_haplogrep(options.vcf_input,options.vcf_output,options.species,options.min_depth)
 
 
 

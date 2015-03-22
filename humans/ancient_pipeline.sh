@@ -124,12 +124,12 @@ RSCRIPTS="$DIR/../rscripts"
 MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
-XMX=-Xmx2g
+XMX=-Xmx8g
 SPECIES=human
 # JAVA7
 # mapper of choice either bwa of bowtie at the moment
 MAPPER=bwa
-JAVA7=/Library/Java/JavaVirtualMachines/jdk1.7.0_60.jdk/Contents/Home/bin/java
+JAVA7=java
 # bowtie index requires the basename of the file
 # Defaults to the human reference Genome. 
 # Sam post -fix (variable changes throughout the script.
@@ -192,6 +192,9 @@ touch .fin_pipeline
 if [[ $ANCIENT_FASTQ_FILTER = "TRUE" ]]; then
     ancient_filter
 fi
+
+echo "MApdamage status"
+echo $MAP_DAMAGE
 SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.ancient_filter.bam"
 
 if [[ $START_POS = 'MAP_READS' ]]; then 
@@ -220,12 +223,12 @@ fi
 ##Run some map Damage
 ## TODO COMPARE HaplotypeCaller and Samtools
 ##call_variants_samtools
-if [[ $MAP_DAMAGE != "TRUE" ]]; then
-    map_damage  
-    echo "DONE MAP DAMAGE" >> .fin_pipeline 
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-fi
+#if [[ $MAP_DAMAGE != "TRUE" ]]; then
+#    map_damage  
+#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+#    index_bams
+#    echo "DONE INDEX BAMS" >> .fin_pipeline
+#fi
 if [[ $PMD != "" ]]; then
     pmd
     echo "DONE PMD" >> .fin_pipeline

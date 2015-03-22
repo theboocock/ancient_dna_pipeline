@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 # Generate coverage plots
 #
 # $1 rscript Folder
@@ -7,7 +7,7 @@
 # $4 x high
 # $5 Coverage output folder
 
-require(getopt)
+library(getopt)
 spec = matrix(c(
     'coverage_file', 'c', 1, "character",
     'reference_fasta', 'r', 2, "character",
