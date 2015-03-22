@@ -2,8 +2,11 @@
 # run the best practice gatk analysis for calling variants.
 
 get_options(){
-    while getopts "tC:AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
+    while getopts "tC:AT:sI:i:pc:mM:r:R:d:mhDb:P:" opt; do
         case $opt in
+        P)
+            PLOIDY=$OPTARG
+            ;;
         t)
             IMPUTATION="TRUE"
             ;;    
@@ -90,6 +93,7 @@ cat << EOF
         -t <TRAITS FILE> default: no traits added to the nexus file
         -h print this output
         -C Using contamination mapping, this is the sequence to extract
+        -P <Ploidy> : ploidy value to use for the haplotype caller.
 EOF
 }
 
@@ -138,6 +142,7 @@ SAM_SEARCH_EXPAND=*.sam
 END=pe
 RGPL=Illumina
 START_POS="MAP_READS"
+PLOIDY=1
 get_options "$@"
 PATH=$PATH:$DIR/../bin
 #gcc -lgfortran

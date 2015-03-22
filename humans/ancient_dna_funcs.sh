@@ -67,6 +67,7 @@ haplocaller_combine(){
             -T HaplotypeCaller \
             -R ${reference} \
             --emitRefConfidence GVCF --variant_index_type LINEAR \
+            --sample_ploidy $PLOIDY
             --variant_index_parameter 128000 \
             -I {} \
             -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
