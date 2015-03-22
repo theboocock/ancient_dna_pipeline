@@ -17,10 +17,9 @@ def get_reads(bam_file, reference_name,mapq=20):
         if (read.mapping_quality >= mapq):
             count_total_ref += 1
     head = bamfile.header
-    print(head)
     for item in head['SQ']:
-        print(item['SN'])
         if(item['SN'] != reference_name):
+            print(item['SN'])
             count_contam = 0
             for read in bamfile.fetch(item['SN']):
                 if read.mapping_quality >= mapq:

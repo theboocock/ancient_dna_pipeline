@@ -26,7 +26,7 @@ def is_ga_or_ct(ref,alt):
     else:
         return False
 
-def recal_vcf(input_vcf):
+def recal_vcf(input_vcf,min_dp=2):
     vcf_reader = vcf.Reader(open(input_vcf,'r'),strict_whitespace=True)
     vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
     for record in vcf_reader:
@@ -42,19 +42,20 @@ def recal_vcf(input_vcf):
             handy_dict = dict(zip(f_keys,f_vals))
             if(is_ga_or_ct(ref,alt)):
                 pl = sample['PL']
-                if( pl is not None):
+                if( pl is not None ):
                     pheno_l = [int(o) for o in pl]
                     if(pheno_l[0] < pheno_l[2]): 
                         handy_dict['GT'] = '0/0'
                     else:
                         handy_dict['GT'] = '1/1'
-            new_values = [ handy_dict['GT'] if  x == 'GT' else None for x in f_keys]
-            record.samples[i].data = record.samples[i].data._make(new_values)
+                new_values = [ handy_dict['GT'] if  x == 'GT' else None for x in f_keys]
+                record.samples[i].data = record.samples[i].data._make(new_values)
         vcf_writer.write_record(record)
 
 def main():
     parser = argparse.ArgumentParser(description="Recal the VCF file")
     parser.add_argument("input_vcf",help="Input VCF that we are going to recalfrom")
+    parser.add_argument("-m","--mapping_output",dest="",help="")
     args = parser.parse_args()
     recal_vcf(args.input_vcf)
 

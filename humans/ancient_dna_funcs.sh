@@ -21,7 +21,6 @@ annotate_traits(){
 }
 
 
-
 sort_bam(){    
 parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/SortSam.jar INPUT={} OUTPUT={.}.sorted.bam SORT_ORDER=coordinate VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
     #parallel -j 6 "java -Xmx1g -jar ${PICARD}/ValidateSamFile.jar INPUT={} OUTPUT=${tmp_dir}/{/.}.final.txt" ::: ${tmp_dir}/*.rmdup.bam
@@ -46,6 +45,8 @@ call_variants_samtools(){
     vcf_output=$SETUP_FILE.vcf
     samtools mpileup -uf ${reference} ${tmp_dir}/*.rmdup.bam  | bcftools view -cg - | vcfutils.pl varFilter -d ${MIN_DEPTH}> $results_dir/$vcf_output 
 }
+
+
 
 haplotype_caller(){
 
@@ -72,7 +73,7 @@ haplocaller_combine(){
             --variant_index_parameter 128000 \
             -I {} \
             -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
-    elif [[ $IGNORE_SECOND_READ = "TRUE" ]]; then
+    elif [[ $MERGED_READS_ONLY = "TRUE" ]]; then
         echo "Using the second_read"
         ## TODO FIX this hard coding of paths.
         SAM_SEARCH_EXPAND="$results_dir/bams/*final_contaminant_mapped.bam"
@@ -84,10 +85,19 @@ haplocaller_combine(){
             -I {} \
             -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
     else 
+        echo "All the reads" 
         # This sholud hopefully fix this part of the analysis 
         # e.g running xapply and merging them both into the variant calling pipeline
-        MERGED_READS_1=$results_dir/bams/*yes_collapse.final.bam
-       MERGED_READS_2=$results_dir/bams/*no_collapse.final.bam 
+        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
+        MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
+        if [[ $TEST_FREEBAYES = "TRUE" ]]; then
+            parallel -j ${CORES} --xapply "samtools merge {1} {2} > ${results_dir}/merged/{1/.}.merged.bam" ::: $MERGED_READS_1 ::: $MERGED_READS_2
+            parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/merged/*.bam
+           freebayes -f ${reference} --ploidy 2 ${results_dir}/merged/*.bam > ${results_dir}/diploid_fb.vcf 
+           freebayes -f ${reference} --ploidy 1 ${results_dir}/merged/*.bam > ${results_dir}/haploid_fb.vcf
+        fi
+        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
+       MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
        parallel -j 1 --xapply echo {1} {2} ::: $MERGED_READS_1 ::: $MERGED_READS_2
        parallel  -j ${CORES} --xapply "${JAVA7} -jar $XMX $GATK \
             -T HaplotypeCaller \
@@ -105,7 +115,7 @@ haplocaller_combine(){
 do
     echo "--variant ${i}"
 done` \
-    -stand_call_conf 10.0 \
+    --standard_min_confidence_threshold_for_calling 10 \
     -o ${vcf_output}
     $JAVA7 -jar -Xmx4g $GATK \
         -T GenotypeGVCFs \
@@ -123,7 +133,7 @@ vcf_filter(){
         -T VariantFiltration \
         -R $reference \
         -V $vcf_output \
-        --filterExpression "MQ < 20.0" \
+        --filterExpression "MQ < 20.0 | DP < 3" \
         --filterName "my_snp_filter" \
         -o $results_dir/$SETUP_FILE.temp.vcf 
     cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf
@@ -233,6 +243,12 @@ ancient_filter(){
 }
 
 store_bams(){ 
+    # TODO Problems to write to karen about.
+    #if [[ $MERGED_READS_ONLY = ""]]; then 
+    #    FIRST_READ=$(SAM_SEARCH_EXPAND | grep "yes_collapse")
+     #   SECOND_READ=$(SAM_SEARCH_EXPAND | grep "no_collapse")
+
+    #fi
     parallel -j $CORES "cp {} $results_dir/bams/{/.}.bam" ::: $SAM_SEARCH_EXPAND
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 }
@@ -281,13 +297,15 @@ do
             else
                 bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.collapsed > tmp1.sai
                 bwa samse $reference tmp1.sai $tmp_dir/$pe_one.collapsed > $tmp_dir/$output.collapse.sam 2> $tmp_dir/$output.collapse.bwa.err
-   #             bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.p1 > tmp1.sai 
-    #            bwa aln -t $CORES $extra_arg_bwa $reference  $tmp_dir/$pe_two.p2 > tmp2.sai 
-  #              bwa sampe $reference tmp1.sai tmp2.sai $tmp_dir/$pe_one.p1 $tmp_dir/$pe_two.p2 > $tmp_dir/$output.no_collapse.sam 
- #               samtools view -Sb $tmp_dir/$output.no_collapse.sam > $tmp_dir/$output.no_collapse.bam
-#                samtools sort $tmp_dir/$output.no_collapse.bam $tmp_dir/$output.no_collapse.sorted
+                if [[ $ONLY_MERGE_READS = "" ]]; then
+                    bwa aln -t $CORES $extra_arg_bwa $reference $tmp_dir/$pe_one.p1 > tmp1.sai 
+                    bwa aln -t $CORES $extra_arg_bwa $reference  $tmp_dir/$pe_two.p2 > tmp2.sai 
+                    bwa sampe $reference tmp1.sai tmp2.sai $tmp_dir/$pe_one.p1 $tmp_dir/$pe_two.p2 > $tmp_dir/$output.no_collapse.sam 
+                    samtools view -Sb $tmp_dir/$output.no_collapse.sam > $tmp_dir/$output.no_collapse.bam
+                    samtools sort $tmp_dir/$output.no_collapse.bam $tmp_dir/$output.no_collapse.sorted
                 # Mark Duplicates Paired END
-#                java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT=${tmp_dir}/$output.no_collapse.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.rmdup.bam METRICS_FILE=${tmp_dir}/$output.no_callapse.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT
+                    java ${XMX} -jar ${PICARD}/MarkDuplicates.jar INPUT=${tmp_dir}/$output.no_collapse.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.rmdup.bam METRICS_FILE=${tmp_dir}/$output.no_callapse.mark_dups.log AS=true REMOVE_DUPLICATES=true VALIDATION_STRINGENCY=SILENT
+                fi
                 #FilterUniqueBam
                 samtools view -Sb $tmp_dir/$output.collapse.sam > $tmp_dir/$output.collapse.bam
                 samtools sort $tmp_dir/$output.collapse.bam $tmp_dir/$output.collapse.sorted
@@ -315,8 +333,10 @@ SAM_SEARCH_EXPAND="${tmp_dir}/*.sam"
 if [[ $MAP_DAMAGE != "" ]]; then
     SAM_SEARCH_EXPAND="${tmp_dir}/*.collapse.rmdup.bam"
     map_damage
-    #SAM_SEARCH_EXPAND="${tmp_dir}/*.no_collapse.rmdup.bam"
-    #map_damage
+    if [[ $MERGED_READS_ONLY = "" ]]; then
+        SAM_SEARCH_EXPAND="${tmp_dir}/*.no_collapse.rmdup.bam"
+        map_damage
+    fi
     #merge these adjusted bam files
     # Downweight the reads in the final file. 
     # First 2 T's  = 2 quality
@@ -364,3 +384,8 @@ remove_contaminants(){
     parallel -j ${CORES} "samtools view -bh {} \"${CONTAMINATION_MAPPING}\" > ${tmp_dir}/{/.}_contaminant_mapped.bam" ::: $SAM_SEARCH_EXPAND
     SAM_SEARCH_EXPAND="${tmp_dir}/*_contaminant_mapped.bam"
 }
+save_contaminants(){
+    parallel -j $CORES "cp {} $results_dir/contamination/{/.}.bam" ::: $SAM_SEARCH_EXPAND
+}
+
+
