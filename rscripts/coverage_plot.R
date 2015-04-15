@@ -1,12 +1,19 @@
 #http://learnr.wordpress.com/2009/04/29/ggplot2-labelling-data-series-and-adding-a-data-table/
 
 
-coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=NULL,total_coverage_file=NULL){
+coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=NULL,total_coverage_file=NULL,contamination_mapping = NULL){
   coverage=read.table(cov,header=F,sep='\t')
   if (!is.null(reference_fasta)){
     require(Biostrings)
     referenceGenome = readDNAStringSet(reference_fasta, format="fasta")
+    if(!is.null(contamination_mapping)){
+        one_to_use =  grep(contamination_mapping,names(referenceGenome),fixed=T)
+        print(one_to_use)
+        xlim_coord = c(1,length(referenceGenome[[one_to_use]]))
+    }else{
+    # Must just be the first one because no mapping was specified
     xlim_coord=c(1, length(referenceGenome[[1]])) 
+    }
     }else{
     #Just default to the human coordinates if nothing is specified
     xlim_coord=c(1,16569)

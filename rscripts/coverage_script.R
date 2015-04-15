@@ -15,6 +15,7 @@ spec = matrix(c(
     'output_prefix','o' , 2, "character",
     'directory_output', 'd' ,2,"character",
     'total_coverage_file', 't', 2, 'character',
+    'contamination_mapping','C', 2, 'character',
     'help','h',0,'logical'
     ),byrow=TRUE, ncol=4)
                 
@@ -33,6 +34,7 @@ opt$coverage_file <- normalizePath(opt$coverage_file)
 if(!is.null(opt$directory_output)){
     setwd(opt$directory_output)
 }
+
 #TODO improve so we don't use a hardcoded path for the script
 source('/Users/james/bioinformatics/ancient_dna_pipeline/rscripts/coverage_plot.R')
-coverage_plot(opt$coverage_file,opt$reference_fasta, opt$sample_name, opt$output_prefix,opt$total_coverage_file)
+coverage_plot(opt$coverage_file,opt$reference_fasta, opt$sample_name, opt$output_prefix,opt$total_coverage_file,opt$contamination_mapping)

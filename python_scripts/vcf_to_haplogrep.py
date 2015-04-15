@@ -10,7 +10,7 @@ from optparse import OptionParser
 # especially the 1kg and merriman sequences data.
 # 
 
-def vcf_to_haplogrep(vcf_input,hgrep_output,species,min_depth):
+def vcf_to_haplogrep(vcf_input,hgrep_output,species,min_depth,ploidy):
     vcf_reader = vcf.Reader(open(vcf_input,'r'),strict_whitespace=True)
     hgrep_o = open(hgrep_output,'w')
     hgrep_o.write('SampleId\tRange\tHaploGroup\tPolymorphisms (delimited by tab)\n')
@@ -51,10 +51,13 @@ def vcf_to_haplogrep(vcf_input,hgrep_output,species,min_depth):
             genotype = genotype.split('/')
             # TODO document bugs
             if(int(pl) > 0):
-                if(pheno_l[0] < pheno_l[2]):
-                    continue
-                genotype =genotype[1]
-                real_gt=str(alt[int(genotype)-1])
+                # Currently ploidy only works for genotype[0] and genotype[1]
+                if(ploidy == 2):
+                    genotype =genotype[1]
+                    real_gt=str(alt[int(genotype)-1])
+                else:
+                    genotype =genotype[0]
+                    real_gt=str(alt[int(genotype)])
                 temp_position=position
                 #hard code for the palindromic sequence haplotype caller
                 # this is because it can be called in two placess that
@@ -108,8 +111,10 @@ def main():
     parser.add_option('-o','--output',dest="vcf_output",help="Output haplogrep file")
     parser.add_option('-s','--species',dest='species',help='Species needed for rCRS fix',default='human')
     parser.add_option('--min-depth',dest="min_depth", default=1)
+    parser.add_option('--ploidy',dest='ploidy',default=2)
     (options,args) = parser.parse_args()
-    vcf_to_haplogrep(options.vcf_input,options.vcf_output,options.species,options.min_depth)
+    options.ploidy = int(options.ploidy)
+    vcf_to_haplogrep(options.vcf_input,options.vcf_output,options.species,options.min_depth,options.ploidy)
 
 
 

@@ -46,8 +46,6 @@ call_variants_samtools(){
     samtools mpileup -uf ${reference} ${tmp_dir}/*.rmdup.bam  | bcftools view -cg - | vcfutils.pl varFilter -d ${MIN_DEPTH}> $results_dir/$vcf_output 
 }
 
-
-
 haplotype_caller(){
 
     #ploidy 100 for mtDNA
@@ -70,7 +68,7 @@ haplocaller_combine(){
             -T HaplotypeCaller \
             -R ${reference} \
             --emitRefConfidence GVCF --variant_index_type LINEAR \
-            --sample_ploidy $PLOIDY
+            --sample_ploidy $PLOIDY \
             --variant_index_parameter 128000 \
             -I {} \
             -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
@@ -104,6 +102,7 @@ haplocaller_combine(){
             -T HaplotypeCaller \
             -R ${reference} \
             --emitRefConfidence GVCF --variant_index_type LINEAR \
+            --sample_ploidy $PLOIDY \
             --variant_index_parameter 128000 \
             -I {1} -I {2}  \
             --output_mode EMIT_ALL_SITES --allSitePLs \
@@ -171,23 +170,75 @@ pmd(){
 vcf_to_haplogrep(){
     # TODO add back the single HSD files although I feel they are not the usefuly
     #parallel -j ${CORES} "vcf_to_haplogrep.py -i {} -o ${results_dir}/{/.}.hsd" ::: ${tmp_dir}/*.ss.vcf
-    vcf_to_haplogrep.py -i ${vcf_output} -o ${results_dir}/final_haplo.hsd
-    vcf_to_haplogrep.py -i $results_dir/$SETUP_FILE.filter.vcf -o ${results_dir}/final_haplo_filtered.hsd
+    if [[ $CONTAMINATION_MAPPING  = "" ]]; then
+        vcf_output=$results_dir/$SETUP_FILE.raw.vcf
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_haplo.hsd -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY 
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_haplo_filtered.hsd -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY
+    else
+        vcf_output=$results_dir/$SETUP_FILE.raw.vcf
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_haplo.hsd -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY -m $CONTAMINATION_MAPPING
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_haplo_filtered.hsd -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY -m $CONTAMINATION_MAPPING
+
+    fi
 }
 
+vcf_to_snp_list(){
+    # TODO add back the single HSD files although I feel they are not the usefuly
+    #parallel -j ${CORES} "vcf_to_haplogrep.py -i {} -o ${results_dir}/{/.}.hsd" ::: ${tmp_dir}/*.ss.vcf
+    if [[ $CONTAMINATION_MAPPING  = "" ]]; then
+        vcf_output=$results_dir/$SETUP_FILE.raw.vcf
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_snp_list.txt -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY --unique_only --to-haplo
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_snp_list_filtered.txt -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY --unique_only --to-haplo
+    if [[ $IMPUTATION = "TRUE" ]]; then
+        vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_snp_list_impute.txt -r $reference  -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --unique --impute --to-haplo
+
+        vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_indels_snp_list_impute.txt -r $reference  --use-indels -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --impute --unique --to-haplo
+    fi
+    else
+        vcf_output=$results_dir/$SETUP_FILE.raw.vcf
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_snp_list.txt -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY -m $CONTAMINATION_MAPPING
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_snp_list_filtered.txt -r ${reference} -s $SPECIES --use-indels --to-haplo --ploidy $PLOIDY -m $CONTAMINATION_MAPPING
+
+    if [[ $IMPUTATION = "TRUE" ]]; then
+        vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_snp_list_impute.txt -r $reference  -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --unique --impute -m $CONTAMINATION_MAPPING --to-haplo
+
+        vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_indels_snp_list_impute.txt -r $reference  --use-indels -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --impute --unique -m $CONTAMINATION_MAPPING --to-haplo
+    fi
+fi
+}
 vcf_to_fasta(){
 #    parallel -j ${CORES} "vcf_to_fasta.py -i {} -o ${results_dir}/{/.}.fa -r ${reference} -s human" ::: ${tmp_dir}/*.ss.vcf
-    vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta.fa -r ${reference}
-    vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered.fa -r ${reference} 
-    # Add vcf_to_fasta
-    vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels
-    vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels
-    if [[ $IMPUTATION == "TRUE" ]]; then
-        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute.fa -r $reference 
-        vcf_to_fasta.py -i $final_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference  --use-indels
+    if [[ $CONTAMINATION_MAPPING != "" ]]; then
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY   -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
+
+        # Add vcf_to_fasta
+        vcf_to_fasta.py --ploidy $PLOIDY -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
+
+        vcf_to_fasta.py --ploidy $PLOIDY -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
+
+        if [[ $IMPUTATION = "TRUE" ]]; then
+            vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_fasta_impute.fa -r $reference  -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov --impute
+
+            vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference  --use-indels -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov --impute
+        fi
+    else
+        vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov
+        vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov
+
+        # Add vcf_to_fasta
+        vcf_to_fasta.py --ploidy $PLOIDY -i ${vcf_output} -o ${results_dir}/final_fasta_indels.fa -r ${reference} --use-indels -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov
+
+        vcf_to_fasta.py --ploidy $PLOIDY -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered_indels.fa -r ${reference} --use-indels -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov
+
+        if [[ $IMPUTATION == "TRUE" ]]; then
+            vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_fasta_impute.fa -r $reference  -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --impute
+
+            vcf_to_fasta.py --ploidy $PLOIDY -i $impute_vcf -o $results_dir/final_fasta_impute_indels.fa -r $reference  --use-indels -s $SPECIES --ploidy $PLOIDY $results_dir/coverage/files/*cov --impute
+        fi
     fi
-    # Strict Filtering to ancient_strict
 }
+
 fasta_to_nexus(){
     # Use python script to convert to nexus, removing all 
    seqmagick convert --output-format nexus --alphabet dna ${results_dir}/final_fasta.fa  $results_dir/temp.nex
@@ -200,6 +251,7 @@ fasta_to_nexus(){
    cat $results_dir/temp.nex | tr -d "'"  > $results_dir/mus.nex 
 
 }
+
 align_muscle(){
     muscle -in $results_dir/final_fasta_filtered_indels.fa -out $results_dir/mus_fasta_filt.fa
     muscle -in $results_dir/final_fasta_indels.fa -out $results_dir/mus_fasta.fa
@@ -214,9 +266,20 @@ coverage_plots(){
 }
 
 coverage_plots_R(){
-    parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
+    if [[ $MERGED_READS_ONLY = "" ]]; then
+        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
+        MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
+        parallel -j ${CORES} --xapply "samtools merge $results_dir/merged/{1/.}.merged.bam {1} {2} " ::: $MERGED_READS_1 ::: $MERGED_READS_2
+        parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/merged/*.bam
+        SAM_SEARCH_EXPAND=${results_dir}/merged/*.bam
+        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${results_dir}/merged/*.bam
+    else
+        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
+    fi
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
-    parallel -j 1 "$RSCRIPTS/coverage_script.R -c {} -d ${results_dir}/coverage -s {/.} -o {/.} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: $tmp_dir/*.cov 
+    mkdir ${results_dir}/coverage/files
+    parallel -j ${CORES} " mv {} ${results_dir}/coverage/files/{/}" ::: $tmp_dir/*.cov
+        parallel -j 1 "$RSCRIPTS/coverage_script.R -C \"${CONTAMINATION_MAPPING}\"   -d ${results_dir}/coverage -s {/.} -o {/.} -c {} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: ${results_dir}/coverage/files/*.cov      
 }
 
 add_and_or_replace_groups(){
@@ -229,13 +292,14 @@ add_and_or_replace_groups(){
             # MS10148-2.no_collapse.rmdup.rescaled.sorted.sorted.bam 
             # MS10148-2.collapse.rmdup.rescaled.sorted.sorted.bam
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.collapse.rmdup.rescaled.ancient_filter.sorted.bam OUTPUT=${tmp_dir}/$output.yes_collapse.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
+        if [[ $MERGED_READS_ONLY = "" ]]; then
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.no_collapse.rmdup.rescaled.ancient_filter.sorted.bam OUTPUT=${tmp_dir}/$output.no_collapse.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name  VALIDATION_STRINGENCY=LENIENT
+        fi
         else
             java ${XMX} -jar ${PICARD}/AddOrReplaceReadGroups.jar INPUT=${tmp_dir}/$output.sorted.rmdup.bam OUTPUT=${tmp_dir}/$output.final.bam RGPL=$RGPL RGPU=$file_name RGSM=$file_name RGLB=$file_name VALIDATION_STRINGENCY=LENIENT 
         fi
     done < $SETUP_FILE
  SAM_SEARCH_EXPAND="${tmp_dir}/*.final.bam"
- echo $SAM_SEARCH_EXPAND
 }
 
 ancient_filter(){
@@ -253,16 +317,27 @@ store_bams(){
     parallel -j $CORES "cp {} $results_dir/bams/{/.}.bam" ::: $SAM_SEARCH_EXPAND
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 }
-recal_vcf(){
-    vcf_input=$results_dir/$SETUP_FILE.filter 
-    recal_vcf.py ${vcf_input}.vcf > ${vcf_input}.recal.vcf 
-}
+#recal_vcf(){
+#    vcf_input=$results_dir/$SETUP_FILE.filter
+#    if [[ $PLOIDY = "1" ]];
+#        cat $results_dir/$SETUP_FILE..filter.vcf | sed "s/\t0:/\t0\/0:/g"  | sed "s/\t1:/\t1\/1:/g" | sed "s/\t2:/\t2\/2:/" | sed "s/\t\.:/\t\.\/\.:/g" > diploid.vcf
+#    fi 
+#}
 
 beagle_imputation(){
     vcf_input=$results_dir/$SETUP_FILE.filter.recal.vcf  
+    if [[ $PLOIDY = "1" ]]; then
+        echo "Neweste one "
+        cat $results_dir/$SETUP_FILE.filter.vcf | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/" | perl -pe "s/\t\.:/\t\.\/\.:/g" > $vcf_input 
+        zero_info.py $vcf_input > tmp.tmp
+        mv tmp.tmp $vcf_input
+    elif [[ PLOIDY = "2" ]]; then
+        recal_vcf.py $results_dir/$SETUP_FILE.filter.vcf >  $vcf_input
+    fi 
+    # This function crates the imputed files for further processing.
     java -jar $BEAGLE gt=${vcf_input} out=tmp
     gzcat tmp.vcf.gz > $results_dir/$SETUP_FILE.impute.vcf
-    final_vcf=$results_dir/$SETUP_FILE.filter.vcf
+    impute_vcf=$results_dir/$SETUP_FILE.impute.vcf
 }
 
 #remove_g_a_c_t(){
@@ -389,6 +464,15 @@ remove_contaminants(){
 }
 save_contaminants(){
     parallel -j $CORES "cp {} $results_dir/contamination/{/.}.bam" ::: $SAM_SEARCH_EXPAND
+}
+contamination_percentage(){
+    # Contamination,
+    MERGED_READS_1=$results_dir/contamination/*yes_collapse*.bam
+    MERGED_READS_2=$results_dir/contamination/*no_collapse*.bam
+    mkdir -p ${results_dir}/contamination_merged
+    parallel -j ${CORES} --xapply "samtools merge $results_dir/contamination_merged/{1/.}.merged.bam {1} {2}" ::: $MERGED_READS_1 ::: $MERGED_READS_2
+    parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/contamination_merged/*.bam
+    parallel -j $CORES "contamination_percentage.py -r \"${CONTAMINATION_MAPPING}\" {} > $results_dir"/contamination_merged/{/.}.txt :::  ${results_dir}/contamination_merged/*.bam 
 }
 
 
