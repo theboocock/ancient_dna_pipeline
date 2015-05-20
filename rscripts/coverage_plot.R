@@ -51,6 +51,8 @@ coverage_plot=function(cov,reference_fasta=NULL, sample_name=NULL,output_prefix=
     output_prefix=cov
   }
   print(output_prefix)
+  print(length(coverage[,1]))
+  print(xlim_coord)
   png(filename=paste0(basename(output_prefix),'.png'))
   plot(gg)
   dev.off()

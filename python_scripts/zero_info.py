@@ -2,6 +2,8 @@
 # Recal VCF, using likelihood column.
 # Only if it's a C-T or G-A transition.
 #
+# This tool is used to zero the info in a VCF file, so that we can then convert the file.
+#
 # @author: James Boocock
 # @date: 16/03/2015
 #
@@ -40,9 +42,15 @@ def recal_vcf(input_vcf,min_dp=2):
             f_keys = (record.samples[i].data._fields)
             f_vals = [ record.samples[i][vx] for vx in (f_keys)]
             handy_dict = dict(zip(f_keys,f_vals))
-            if(is_ga_or_ct(ref,alt)):
+            depth = handy_dict['DP']
+            if (depth is not None):
+                if(int(depth) > min_dp):
+                    new_values = [ handy_dict['GT'] if  x == 'GT' else None for x in f_keys]
+                else:
+                    new_values = [ None for x in f_keys ] 
+            else:
                 new_values = [ handy_dict['GT'] if  x == 'GT' else None for x in f_keys]
-                record.samples[i].data = record.samples[i].data._make(new_values)
+            record.samples[i].data = record.samples[i].data._make(new_values)
         vcf_writer.write_record(record)
 
 def main():
