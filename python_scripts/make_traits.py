@@ -54,6 +54,7 @@ def comma_sep_binary_string(sample_names,full_sample_list,individual_trait_list)
     string_dict={}
     trait_dict={}
     individual_trait_list=[s.strip() for s in individual_trait_list]
+
     individual_trait_list=["UNKNOWN" if s == "" else s for i, s in enumerate(individual_trait_list)]
     for sample, trait in zip(full_sample_list, individual_trait_list):
         trait_dict[sample] = trait 
@@ -73,11 +74,14 @@ def comma_sep_binary_string(sample_names,full_sample_list,individual_trait_list)
     return(sample_dict, n_traits,trait_labels)
 
 def traits_to_nexus(input_file ,output_prefix, traits):
+
     """
         Reads traits and processes the pandas trait dictionary.
     """
     # Pull out the sample names
+    print(traits.shape)
     samplenames = traits[1:,0]
+    print(samplenames)
     temp_file = str(uuid.uuid4())
     with open(temp_file,'w') as out_file:
         a = open(input_file)
