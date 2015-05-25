@@ -5,6 +5,7 @@ get_options(){
     while getopts "tC:AT:sI:i:pc:mMr:R:d:mhDb:P:S:" opt; do
         case $opt in
         P)
+            echo $OPTARG
             PLOIDY=$OPTARG
             ;;
         t)
@@ -121,6 +122,7 @@ PICARD="$DIR/../src/picard"
 GATK="$DIR/../src/gatk/GenomeAnalysisTK.jar"
 BEAGLE="$DIR/../src/beagle/beagle.jar"
 RSCRIPTS="$DIR/../rscripts"
+MAX_FILES=100
 MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
@@ -241,18 +243,13 @@ echo $MAP_DAMAGE
 # TODO - here we have to remove bad_samples
 
 SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
-#remove_bad_samples
-#merge_the_same_samples
+remove_bad_samples
+merge_the_same_samples
 
 #Run some map Damage
 # TODO COMPARE HaplotypeCaller and Samtools
 #call_variants_samtools
-#if [[ $MAP_DAMAGE != "TRUE" ]]; then
-#    map_damage  
-#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
-#    index_bams
-#    echo "DONE INDEX BAMS" >> .fin_pipeline
-#fi
+
 #if [[ $PMD != "" ]]; then
 #    pmd
 #    echo "DONE PMD" >> .fin_pipeline
@@ -263,15 +260,15 @@ SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 #    haplotype_caller
 #    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
 #fi
-haplocaller_combine
-echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
-vcf_filter
-echo "DONE VCF FILTER" >> .fin_pipeline
-
-if [[ $MAP_DAMAGE != "" ]]; then
-    contamination_percentage
-    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
-fi
+#haplocaller_combine
+#echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
+#vcf_filter
+#echo "DONE VCF FILTER" >> .fin_pipeline
+#
+#if [[ $MAP_DAMAGE != "" ]]; then
+#    contamination_percentage
+#    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
+#fi
 coverage_plots_R
 
 if [[ $IMPUTATION = "TRUE" ]]; then

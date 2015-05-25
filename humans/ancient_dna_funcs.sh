@@ -65,6 +65,7 @@ haplocaller_combine(){
     fi
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     if [[ $MAP_DAMAGE = "" ]]; then
+        echo $PLOIDY
         parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
             -T HaplotypeCaller \
             -R ${reference} \
@@ -101,6 +102,7 @@ haplocaller_combine(){
         MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
        MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
        parallel -j 1 --xapply echo {1} {2} ::: $MERGED_READS_1 ::: $MERGED_READS_2
+       
        parallel  -j ${CORES} --xapply "${JAVA7} -jar $XMX $GATK \
             -T HaplotypeCaller \
             -R ${reference} \
@@ -111,24 +113,33 @@ haplocaller_combine(){
             --output_mode EMIT_ALL_SITES --allSitePLs \
             -o ${tmp_dir}/{1/.}.gvcf" ::: $MERGED_READS_1 ::: $MERGED_READS_2
     fi
-    $JAVA7 -jar $XMX $GATK \
-        -T GenotypeGVCFs \
-        -R ${reference} \
-        `for i in ${tmp_dir}/*.gvcf
-do
-    echo "--variant ${i}"
-done` \
-    --standard_min_confidence_threshold_for_calling 10 \
-    -o ${vcf_output}
-    $JAVA7 -jar $XMX $GATK \
-        -T GenotypeGVCFs \
-        -R ${reference} \
-        `for i in ${tmp_dir}/*.gvcf
-do
-    echo "--variant ${i}"
-done` \
-    -o ${results_dir}/all_sites.vcf --includeNonVariantSites
-}
+    
+    g_vcf_array=${tmp_dir}/*.gvcf
+    count=${#arr[@]}
+    if [[ $count -ge $MAX_FILES ]]; then
+        merge_and_genotype_GATK.py -g ${GATK} -x ${XMX} ${tmp_dir}/*.gvcf
+
+    else
+            $JAVA7 -jar $XMX $GATK \
+                -T GenotypeGVCFs \
+                -R ${reference} \
+                `for i in ${tmp_dir}/*.gvcf
+        do
+            echo "--variant ${i}"
+        done` \
+            --standard_min_confidence_threshold_for_calling 10 \
+            -o ${vcf_output}
+            $JAVA7 -jar $XMX $GATK \
+                -T GenotypeGVCFs \
+                -R ${reference} \
+                `for i in ${tmp_dir}/*.gvcf
+        do
+            echo "--variant ${i}"
+        done` \
+            -o ${results_dir}/all_sites.vcf --includeNonVariantSites
+
+    fi
+    }
 
 vcf_filter(){
     vcf_input=$vcf_output 
@@ -274,7 +285,10 @@ coverage_plots(){
 }
 
 coverage_plots_R(){
-    if [[ $MERGED_READS_ONLY = "" ]]; then
+    if [[ $MAP_DAMAGE = "" ]]; then
+        echo "WE HERE"
+        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
+    elif [[ $MERGED_READS_ONLY = "" ]]; then
         MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
         MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
         parallel -j ${CORES} --xapply "samtools merge $results_dir/merged/{1/.}.merged.bam {1} {2} " ::: $MERGED_READS_1 ::: $MERGED_READS_2
@@ -282,6 +296,7 @@ coverage_plots_R(){
         SAM_SEARCH_EXPAND=${results_dir}/merged/*.bam
         parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${results_dir}/merged/*.bam
     else
+        echo "WE HERE"
         parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
     fi
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
