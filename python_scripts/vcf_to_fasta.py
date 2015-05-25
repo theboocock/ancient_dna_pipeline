@@ -46,7 +46,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
     index = index[0]
     full_sequence = list(str(f[f.keys()[index]]))
     min_max_coord = []
-    first_coordinate = False
+    first_coordinate = True 
     sample_fasta = {}
     unique_snps = {}
     if free_bayes or ploidy == 1:
@@ -264,6 +264,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                     unique_truth[snp] = True
         min_max_coord.append(str(position))
         with open(output_fasta, 'w') as hgrep_o:
+            hgrep_o.write('SampleId\tRange\tHaploGroup\tPolymorphisms (delimited by tab)\n')
             for sample, substitions in sample_lines.items():
                 output_line = []
                 output_line.append(sample)

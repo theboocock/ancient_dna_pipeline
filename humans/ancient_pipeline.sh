@@ -5,6 +5,7 @@ get_options(){
     while getopts "tC:AT:sI:i:pc:mMr:R:d:mhDb:P:S:" opt; do
         case $opt in
         P)
+            echo $OPTARG
             PLOIDY=$OPTARG
             ;;
         t)
@@ -121,6 +122,7 @@ PICARD="$DIR/../src/picard"
 GATK="$DIR/../src/gatk/GenomeAnalysisTK.jar"
 BEAGLE="$DIR/../src/beagle/beagle.jar"
 RSCRIPTS="$DIR/../rscripts"
+MAX_FILES=100
 MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
@@ -242,8 +244,8 @@ fi
 # TODO - here we have to remove bad_samples
 
 SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
-#remove_bad_samples
-#merge_the_same_samples
+remove_bad_samples
+merge_the_same_samples
 
 #Run some map Damage
 # TODO COMPARE HaplotypeCaller and Samtools
