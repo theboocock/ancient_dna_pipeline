@@ -244,8 +244,8 @@ fi
 # TODO - here we have to remove bad_samples
 
 SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
-remove_bad_samples
-merge_the_same_samples
+#remove_bad_samples
+#merge_the_same_samples
 
 #Run some map Damage
 # TODO COMPARE HaplotypeCaller and Samtools
