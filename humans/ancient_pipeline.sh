@@ -2,16 +2,17 @@
 # run the best practice gatk analysis for calling variants.
 
 get_options(){
-    while getopts "tC:AT:sI:i:pc:mM:r:R:d:mhDb:" opt; do
+    while getopts "tC:AT:sI:i:pc:mMr:R:d:mhDb:P:S:" opt; do
         case $opt in
+        P)
+            echo $OPTARG
+            PLOIDY=$OPTARG
+            ;;
         t)
             IMPUTATION="TRUE"
             ;;    
         b)
             BAIL_POS=$OPTARG
-            ;;
-        S)
-            START_POS=$OPTARG
             ;;
         i)
             SETUP_FILE=$OPTARG
@@ -23,7 +24,7 @@ get_options(){
             XMX=-Xmx${OPTARG}
             ;;
         M)
-            MAPPER=$OPTARG
+            MERGED_READS_ONLY="TRUE"
             ;;
         r) 
             reference=$OPTARG
@@ -41,7 +42,7 @@ get_options(){
             TRAITS_FILE=$OPTARG  
             ;;
         s)
-            END="se"
+            START_POS=$OPTARG
             ;;
         S)
             SPECIES=$OPTARG
@@ -90,6 +91,7 @@ cat << EOF
         -t <TRAITS FILE> default: no traits added to the nexus file
         -h print this output
         -C Using contamination mapping, this is the sequence to extract
+        -P <Ploidy> : ploidy value to use for the haplotype caller.
 EOF
 }
 
@@ -114,22 +116,21 @@ get_params(){
 
 # This lets us ignore the 
 
-IGNORE_SECOND_READ="TRUE"
 DIR=$( dirname "$(readlink  $0)")
 reference="$DIR/../ref/rCRS.fa"
 PICARD="$DIR/../src/picard"
 GATK="$DIR/../src/gatk/GenomeAnalysisTK.jar"
 BEAGLE="$DIR/../src/beagle/beagle.jar"
 RSCRIPTS="$DIR/../rscripts"
+MAX_FILES=100
 MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
-XMX=-Xmx2g
-SPECIES=human
+XMX=-Xmx16g
 # JAVA7
 # mapper of choice either bwa of bowtie at the moment
 MAPPER=bwa
-JAVA7=/Library/Java/JavaVirtualMachines/jdk1.7.0_60.jdk/Contents/Home/bin/java
+JAVA7=java
 # bowtie index requires the basename of the file
 # Defaults to the human reference Genome. 
 # Sam post -fix (variable changes throughout the script.
@@ -137,10 +138,23 @@ SAM_SEARCH_EXPAND=*.sam
 #Read group stuff
 END=pe
 RGPL=Illumina
-START_POS="MAP_READS"
+#TEST_FREEBAYES="TRUE"
+#START_POS="SKIP_READS"
+START_POS='MAP_READS'
+PLOIDY=1
 get_options "$@"
 PATH=$PATH:$DIR/../bin
-#gcc -lgfortran
+#gcc -lgfortra
+echo $CONTAMINATION_MAPPING
+echo $SPECIES
+if [[ $SPECIES = "" ]]; then 
+    echo "You need to specify a species, valid values are human and dog"
+    exit 1
+fi
+if [[ $TEST_FREEBAYES = "TRUE" ]]; then
+    echo "We have testing freebayse working"
+fi
+
 if [[ $CONTAMINATION_MAPPING != "" ]]; then
     echo "We have contamination mapping working"
     echo $CONTAMINATION_MAPPING  
@@ -149,6 +163,12 @@ fi
 if [[ $IMPUTATION = "TRUE" ]]; then
     echo "Imputation is working"
 fi 
+if [[ $MERGED_READS_ONLY = "" ]]; then
+    echo "We are not just using the merged reads"
+else
+    echo "Using only the merged reads"
+fi
+echo $MAP_DAMAGE
 #exit 1
 # Default settings if you don't specif anything, 
 SETUP_FILE=pipeline_setup.txt
@@ -170,6 +190,8 @@ mkdir -p $results_dir/damage
 mkdir -p $results_dir/coverage
 mkdir -p $results_dir/pmd
 mkdir -p $results_dir/bams
+mkdir -p $results_dir/contamination
+mkdir -p $results_dir/merged
 echo $SAM_SEARCH_EXPAND
 #Source after the environment has been setup
 if [[ $PMD != "" ]]; then
@@ -192,9 +214,11 @@ touch .fin_pipeline
 if [[ $ANCIENT_FASTQ_FILTER = "TRUE" ]]; then
     ancient_filter
 fi
-SAM_SEARCH_EXPAND="${tmp_dir}/*.rescaled.ancient_filter.bam"
 
-if [[ $START_POS = 'MAP_READS' ]]; then 
+echo "MApdamage status"
+echo $MAP_DAMAGE
+
+if [[ $START_POS = 'MAP_READS' ]]; then
     map_reads
     echo "DONE MAP READS" >> .fin_pipeline
     sort_bam
@@ -209,6 +233,7 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     index_bams
     echo "DONE INDEX BAMS" >> .fin_pipeline
     if [[ $CONTAMINATION_MAPPING != "" ]]; then
+        save_contaminants
         remove_contaminants
     fi
     store_bams
@@ -216,23 +241,28 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     index_bams
 fi
 
+# TODO - here we have to remove bad_samples
 
-##Run some map Damage
-## TODO COMPARE HaplotypeCaller and Samtools
-##call_variants_samtools
-if [[ $MAP_DAMAGE != "TRUE" ]]; then
-    map_damage  
-    echo "DONE MAP DAMAGE" >> .fin_pipeline 
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-fi
+SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
+#remove_bad_samples
+#merge_the_same_samples
+
+#Run some map Damage
+# TODO COMPARE HaplotypeCaller and Samtools
+#call_variants_samtools
+#if [[ $MAP_DAMAGE != "TRUE" ]]; then
+#    map_damage  
+#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+#    index_bams
+#    echo "DONE INDEX BAMS" >> .fin_pipeline
+#fi
 if [[ $PMD != "" ]]; then
     pmd
     echo "DONE PMD" >> .fin_pipeline
     index_bams
     echo "DONE INDEX BAMS" >> .fin_pipeline
 fi
-if [[ $MINIMAL == "TRUE" ]]; then
+if [[ $MINIMAL = "TRUE" ]]; then
     haplotype_caller
     echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
 fi
@@ -240,18 +270,22 @@ haplocaller_combine
 echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 vcf_filter
 echo "DONE VCF FILTER" >> .fin_pipeline
-vcf_to_haplogrep
-echo "DONE VCF HAPLOGREP" >> .fin_pipeline
+
+if [[ $MAP_DAMAGE != "" ]]; then
+    contamination_percentage
+    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
+fi
 coverage_plots_R
-echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
-#
-#if [[ $MAP_DAMAGE != "" ]]; then
-#    remove_g_a_c_t
-#fi
-# Turn them all the fasta
-if [[ $IMPUTATION == "TRUE" ]]; then
+
+if [[ $IMPUTATION = "TRUE" ]]; then
+    # Imputation consists of two distinct steps,
+    # Recalling the VCF, then using that with beagle imputation
+    #
     beagle_imputation
 fi
+
+
+vcf_to_snp_list
 
 vcf_to_haplogrep
 echo "DONE VCF HAPLOGREP" >> .fin_pipeline

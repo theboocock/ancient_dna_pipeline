@@ -47,6 +47,6 @@ elif
      for i in $1/*_R1_001.fastq ; do echo ${i} `echo ${i} | sed 's/R1_001/R2_001/g'` >> line_setup.txt; done
 fi
 paste -d ' ' samples_list.txt line_setup.txt > $OUTPUT
-#iirm line_setup.txt samples_list.txt
+rm line_setup.txt samples_list.txt
 
 
