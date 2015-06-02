@@ -1,0 +1,6 @@
+@HD	VN:1.4	SO:unsorted
+@SQ	SN:gi|5834843|ref|NC_001323.1|	LN:16775	M5:20aeb064eb8e769dcc48922369985083	UR:file:/Users/james/bioinformatics/ancient_dna_pipeline/ref/contamination.fa
+@SQ	SN:gi|60101824|ref|NC_006853.1|	LN:16338	M5:e3c18324cb5221eee141fd6f1028a351	UR:file:/Users/james/bioinformatics/ancient_dna_pipeline/ref/contamination.fa
+@SQ	SN:gi|17737322|ref|NC_002008.4|	LN:16727	M5:f7d0daed161cd98504d46f25ab53a038	UR:file:/Users/james/bioinformatics/ancient_dna_pipeline/ref/contamination.fa
+@SQ	SN:gi|251831106|ref|NC_012920.1|	LN:16569	M5:c68f52674c9fb33aef52dcf399755519	UR:file:/Users/james/bioinformatics/ancient_dna_pipeline/ref/contamination.fa
+@SQ	SN:gi|223976078|ref|NC_012095.1|	LN:16770	M5:c32d2133c7327cc9e47776c5eed17977	UR:file:/Users/james/bioinformatics/ancient_dna_pipeline/ref/contamination.fa
