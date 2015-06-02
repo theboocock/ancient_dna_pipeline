@@ -99,18 +99,14 @@ get_params(){
     # AdapterRemoval
     AD_MIN_LENGTH=25
     AD_OVERLAP_LENGTH=11
-
     # HaplotypeFilter
     HC_QD='2'
     HC_FS='60'
     HC_MQ='30'
     HC_MQRankSum='-12.5'
     HC_ReadPosRankSum='-8.0'
-
     # BWA
     BWA_ANCIENT_ARG="-n 0.03 -o 2 -l 1024"
-    
-
 }
 
 
@@ -240,36 +236,38 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     echo "DONE STORE BAMS" >> .fin_pipeline
     index_bams
 fi
-
-# TODO - here we have to remove bad_samples
-
+#
+#
+#
 SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
-#remove_bad_samples
-#merge_the_same_samples
-
-#Run some map Damage
-# TODO COMPARE HaplotypeCaller and Samtools
-#call_variants_samtools
-#if [[ $MAP_DAMAGE != "TRUE" ]]; then
-#    map_damage  
-#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+merge_bams
+##remove_bad_samples
+##merge_the_same_samples
+#
+## TODO up until this point we are running single samples individually. 
+## Files may end up missing in the bams folder so need to be taken care
+## of before running into the next step
+##Run some map Damage
+## TODO COMPARE HaplotypeCaller and Samtools
+##call_variants_samtools
+##if [[ $MAP_DAMAGE != "TRUE" ]]; then
+##    map_damage  
+##    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+##    index_bams
+##    echo "DONE INDEX BAMS" >> .fin_pipeline
+##fi
+#if [[ $PMD != "" ]]; then
+#    pmd
+#    echo "DONE PMD" >> .fin_pipeline
 #    index_bams
 #    echo "DONE INDEX BAMS" >> .fin_pipeline
 #fi
-if [[ $PMD != "" ]]; then
-    pmd
-    echo "DONE PMD" >> .fin_pipeline
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-fi
-if [[ $MINIMAL = "TRUE" ]]; then
-    haplotype_caller
-    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
-fi
+#if [[ $MINIMAL = "TRUE" ]]; then
+#    haplotype_caller
+#    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
+#fi
 haplocaller_combine
 echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
-vcf_filter
-echo "DONE VCF FILTER" >> .fin_pipeline
 
 if [[ $MAP_DAMAGE != "" ]]; then
     contamination_percentage
@@ -285,6 +283,8 @@ if [[ $IMPUTATION = "TRUE" ]]; then
 fi
 
 
+vcf_filter
+echo "DONE VCF FILTER" >> .fin_pipeline
 vcf_to_snp_list
 
 vcf_to_haplogrep

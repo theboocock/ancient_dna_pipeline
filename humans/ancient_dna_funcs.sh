@@ -38,7 +38,7 @@ consensus_sequences(){
 }
 
 index_bams(){
-    parallel -j ${CORES} "java ${XMX} -jar ${PICARD}/BuildBamIndex.jar \
+    parallel -gg${CORES} "java ${XMX} -jar ${PICARD}/BuildBamIndex.jar \
         INPUT={} VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
 }
 call_variants_samtools(){
@@ -58,91 +58,22 @@ haplotype_caller(){
         -stand_emit_conf 10.0 " ::: $SAM_SEARCH_EXPAND
 }
 
+merge_bams(){
+    merge_bams.py -d $results_dir/merged $SAM_SEARCH_EXPAND
+}
+
+
 haplocaller_combine(){
-    if [[ $BAIL_POS = "HAPLOCALLER" ]]; then
-        echo "BROKE AT HAPLOTYPE_CALLER"
-        exit 1
-    fi
+    SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
-    if [[ $MAP_DAMAGE = "" ]]; then
-        echo $PLOIDY
-        parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
-            -T HaplotypeCaller \
-            -R ${reference} \
-            --emitRefConfidence GVCF --variant_index_type LINEAR \
-            --sample_ploidy $PLOIDY \
-            --variant_index_parameter 128000 \
-            -I {} \
-            -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
-    elif [[ $MERGED_READS_ONLY = "TRUE" ]]; then
-        echo "Using the second_read"
-        ## TODO FIX this hard coding of paths.
-        
-        SAM_SEARCH_EXPAND="$results_dir/bams/*final_contaminant_mapped.bam"
-        parallel -j ${CORES} "${JAVA7} -jar ${XMX} ${GATK} \
-            -T HaplotypeCaller \
-            -R ${reference} \
-            --emitRefConfidence GVCF --variant_index_type LINEAR \
-            --variant_index_parameter 128000 \
-            --sample_ploidy $PLOIDY \
-            -I {} \
-            -o ${tmp_dir}/{/.}.gvcf" ::: $SAM_SEARCH_EXPAND
-    else 
-        echo "All the reads" 
-        # This sholud hopefully fix this part of the analysis 
-        # e.g running xapply and merging them both into the variant calling pipeline
-        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
-        MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
-        if [[ $TEST_FREEBAYES = "TRUE" ]]; then
-            parallel -j ${CORES} --xapply "samtools merge {1} {2} > ${results_dir}/merged/{1/.}.merged.bam" ::: $MERGED_READS_1 ::: $MERGED_READS_2
-            parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/merged/*.bam
-           freebayes -f ${reference} --ploidy 2 ${results_dir}/merged/*.bam > ${results_dir}/diploid_fb.vcf 
-           freebayes -f ${reference} --ploidy 1 ${results_dir}/merged/*.bam > ${results_dir}/haploid_fb.vcf
-        fi
-        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
-       MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
-       parallel -j 1 --xapply echo {1} {2} ::: $MERGED_READS_1 ::: $MERGED_READS_2
-       
-       parallel  -j ${CORES} --xapply "${JAVA7} -jar $XMX $GATK \
-            -T HaplotypeCaller \
-            -R ${reference} \
-            --emitRefConfidence GVCF --variant_index_type LINEAR \
-            --sample_ploidy $PLOIDY \
-            --variant_index_parameter 128000 \
-            -I {1} -I {2}  \
-            --output_mode EMIT_ALL_SITES --allSitePLs \
-            -o ${tmp_dir}/{1/.}.gvcf" ::: $MERGED_READS_1 ::: $MERGED_READS_2
-    fi
-    
-    g_vcf_array=${tmp_dir}/*.gvcf
-    count=${#arr[@]}
-    if [[ $count -ge $MAX_FILES ]]; then
-        merge_and_genotype_GATK.py -g ${GATK} -x ${XMX} ${tmp_dir}/*.gvcf
-
-    else
-            $JAVA7 -jar $XMX $GATK \
-                -T GenotypeGVCFs \
-                -R ${reference} \
-                `for i in ${tmp_dir}/*.gvcf
-        do
-            echo "--variant ${i}"
-        done` \
-            --standard_min_confidence_threshold_for_calling 10 \
-            -o ${vcf_output}
-            $JAVA7 -jar $XMX $GATK \
-                -T GenotypeGVCFs \
-                -R ${reference} \
-                `for i in ${tmp_dir}/*.gvcf
-        do
-            echo "--variant ${i}"
-        done` \
-            -o ${results_dir}/all_sites.vcf --includeNonVariantSites
-
-    fi
-    }
+    merge_and_genotype_GATK.py -c $CORES -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND}
+}
 
 vcf_filter(){
     vcf_input=$vcf_output 
+    # Filter VCF removing samples having low coverage. 
+    samples_to_keep.py -m 95 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
+    mv tmp.vcf $vcf_input
     $JAVA7 $XMX -jar $GATK \
         -T VariantFiltration \
         -R $reference \
@@ -152,10 +83,11 @@ vcf_filter(){
         -o $results_dir/$SETUP_FILE.temp.vcf 
     cat $results_dir/$SETUP_FILE.temp.vcf | grep -v "my_snp_filter"  > $results_dir/$SETUP_FILE.filter.vcf
 }
+
 ancient_filter(){
     ancient_filter.py -d 2 --c2t --g2a -i {} -o $temp_results/{/.}.anc.fq
-    
 }
+
 indel_realignment(){
     parallel --env PATH -j $CORES "$JAVA7 $XMX -jar $GATK \
         -T RealignerTargetCreator \
@@ -285,20 +217,7 @@ coverage_plots(){
 }
 
 coverage_plots_R(){
-    if [[ $MAP_DAMAGE = "" ]]; then
-        echo "WE HERE"
-        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
-    elif [[ $MERGED_READS_ONLY = "" ]]; then
-        MERGED_READS_1=$results_dir/bams/*yes_collapse*.bam
-        MERGED_READS_2=$results_dir/bams/*no_collapse*.bam 
-        parallel -j ${CORES} --xapply "samtools merge $results_dir/merged/{1/.}.merged.bam {1} {2} " ::: $MERGED_READS_1 ::: $MERGED_READS_2
-        parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/merged/*.bam
-        SAM_SEARCH_EXPAND=${results_dir}/merged/*.bam
-        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${results_dir}/merged/*.bam
-    else
-        echo "WE HERE"
-        parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: ${SAM_SEARCH_EXPAND}
-    fi
+    parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: $results_dir/merged/*.bam
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     mkdir ${results_dir}/coverage/files
     parallel -j ${CORES} " mv {} ${results_dir}/coverage/files/{/}" ::: $tmp_dir/*.cov
@@ -493,15 +412,10 @@ save_contaminants(){
 contamination_percentage(){
     # Contamination,
     mkdir -p ${results_dir}/contamination_merged
-    if [[ $MERGED_READS_ONLY = "" ]]; then
-        MERGED_READS_1=$results_dir/contamination/*yes_collapse*.bam
-        parallel -j ${CORES} --xapply "samtools merge $results_dir/contamination_merged/{1/.}.merged.bam {1} {2}" ::: $MERGED_READS_1 ::: $MERGED_READS_2
-        parallel -j ${CORES} "samtools index {}" ::: ${results_dir}/contamination_merged/*.bam
-        parallel -j $CORES "contamination_percentage.py -r \"${CONTAMINATION_MAPPING}\" {} > $results_dir/contamination_merged/{/.}.txt" :::  ${results_dir}/contamination_merged/*.bam 
-    else
-        MERGED_READS_1=$results_dir/contamination/*yes_collapse*.bam
-        parallel -j $CORES "contamination_percentage.py -r \"${CONTAMINATION_MAPPING}\" {} > $results_dir/contamination_merged/{/.}.txt" :::  $MERGED_READS_1
-    fi
-   contamination_merged.py $results_dir/contamination_merged/*.txt > $results_dir/contamination_table.txt  
+    CONTAMINATION_READS=$results_dir/contamination/*.bam
+    merge_bams.py -d ${results_dir}/contamination_merged $CONTAMINATION_READS
+    parallel -j $CORES "samtools index {} " ::: ${results_dir}/contamination_merged/*.bam
+    parallel -j $CORES "contamination_percentage.py -r \"${CONTAMINATION_MAPPING}\" {} > $results_dir/contamination_merged/{/.}.txt" :::  ${results_dir}/contamination_merged/*.bam 
+   contamination_table.py $results_dir/contamination_merged/*.txt > $results_dir/contamination_table.txt  
 }
 

@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-#
-# The script is used to mergetheGVCFs into a smaller set
-# of file when too many files are present.
-#
-#
 
-### Boiler plate to get parallel jobs running in python
+"""
+ The script is used to mergetheGVCFs into a smaller set
+ of file when too many files are present.
+
+ Boiler plate to get parallel jobs running in python
+"""
 
 import argparse
+import pysam
 from job_utilities import *
 
-HAPLOTYPE_CALLER="""
+HAPLOTYPE_CALLER = """
     java -jar {0} \
     {1} \
     -T HaplotypeCaller \
@@ -18,7 +19,7 @@ HAPLOTYPE_CALLER="""
     -o {3} \
 """
 
-MERGE_GVCFS_TEMPLATE="""
+MERGE_GVCFS_TEMPLATE = """
     java -jar {0} \
     {1} \
     -T CombineGVCFs \
@@ -26,13 +27,16 @@ MERGE_GVCFS_TEMPLATE="""
     -o {3} \
 """
 
-HAPLOTYPE_CALLER_TEMPLATE="""
+GENOTYPEGVCFS_TEMPLATE = """
     java -Djava.io.tmpdir=tmpdir -jar {0} \
     {1} \
     -T GenotypeGVCFs \
     -R {2} \
     -o {3} \
+    --standard_min_confidence_threshold_for_calling 10
 """
+
+
 
 def get_bam_pairs(bams):
     """
@@ -44,14 +48,15 @@ def get_bam_pairs(bams):
     ### TODO Use the read group to merge the reads, far smarter!
     bam_list = {}
     for bam in bams:
-        sid = bam.split('.')[0]
+        sam = pysam.AlignmentFile(bam,'rb')
+        sample_id  = (sam.header['RG'][0]['SM'])
         try:
-            bam_list[sid].append(sid)
+            bam_list[sample_id].append(bam)
         except KeyError:
-            bam_list[sid] = [sid]
+            bam_list[sample_id] = [bam]
     return bam_list
 
-def haplotype_caller(gatk, xmx, cores, reference, bams):
+def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
     """
         Function creates gVCFS using the GATK.
 
@@ -65,12 +70,20 @@ def haplotype_caller(gatk, xmx, cores, reference, bams):
     """
     gvcfs = []
     bam_pairs = get_bam_pairs(bams)
-    for bams in bam_pairs:
-        output = bams[0].split('.')+'.gvcf'
-        command = HAPLOTYPE_CALLER_TEMPLATE.format(xmx, gatk, reference, output)
-        command = ' -I ' + ' -I '.join
+    commands = []
+    try:
+        os.mkdir(out_directory)
+    except OSError:
+        pass
+    for sample, bams in bam_pairs.items():
+        output = os.path.join(out_directory , os.path.basename(sample + '.g.vcf'))
+        command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output)
+        command = command + ' -I ' + ' -I '.join(bams)
+        commands.append(command)
+    queue_jobs(commands, 'haplotypeCaller', cores)
     return gvcfs
 
+SPLIT_SIZE = 100
 def merge_gvcfs(gatk, xmx, cores, gvcfs, reference):
     """
         Function merges GVCFs using the GATK.
@@ -83,50 +96,71 @@ def merge_gvcfs(gatk, xmx, cores, gvcfs, reference):
 
         @return outputs, a list of the mergedGVCFS
     """
-    SPLIT_SIZE=100
     commands = []
     outputs = []
-    stdouts = []
-    no_groups = (len(gvcfs)/SPLIT_SIZE) + 1  
-    for i in range(0,no_groups):
-        output = str(i) + '.gvcf'
+    no_groups = (len(gvcfs)/SPLIT_SIZE) + 1
+    for i in range(0, no_groups):
+        output = str(i) + '.g.vcf'
         outputs.append(output)
-        command = MERGE_GVCFS_TEMPLATE.format(xmx, gatk ,reference, output) 
+        command = MERGE_GVCFS_TEMPLATE.format(xmx, gatk, reference, output)
         command = command + '--variant ' + ' --variant '.join(gvcfs[i:(i*SPLIT_SIZE + SPLIT_SIZE)])
         commands.append(command)
-    queue_jobs(commands, "mergeGVCFs", cores) 
-    return(outputs)
+    queue_jobs(commands, "mergeGVCFs", cores)
+    return outputs
 
-def combine_gvcfs(gatk, xmx, cores, reference, inputs,output):
-   command = HAPLOTYPE_CALLER_TEMPLATE.format(xmx, gatk,  reference, output) 
-   command = command + ' --variant ' +' --variant '.join(inputs[0:100])
-   queue_jobs([command],'combineGVCF',1)
 
 #
 #def haplotype_single(gatk, xmx, cores, reference, inputs):
 #   commands = []
 #   for sample in inputs:
 #       output = sample + 'test.vcf'
-#       command = HAPLOTYPE_CALLER_TEMPLATE.format(xmx, gatk,  reference, output) 
+##       command = HAPLOTYPE_CALLER_TEMPLATE.format(xmx, gatk,  reference, output) 
 #       command = command + ' --variant ' +  sample
 #       commands.append(command)
 #   queue_jobs(commands,'haplotypeCaller',1)
 
+def genotype_gvcfs(gatk, xmx, cores, 
+                   inputs, output,
+                   reference):
+    """
+        Genotype GVCFs using the GATK
+    """
+    commands = []
+    command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
+    command = command + ' --variant ' + ' --variant '.join(inputs)
+    commands.append(command)
+    output = os.path.join(os.path.dirname(output), 'all_sites.vcf')
+    command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
+    command = command + ' --variant ' + ' --variant '.join(inputs)
+    command = command + ' --includeNonVariantSites'
+    commands.append(command)
+    queue_jobs(commands, "genotypeGVCFs", cores)
+
 def main():
+    """
+        Main module runs the GATK for the analysis.
+    """
     parser = argparse.ArgumentParser(description='MergeGVCFs and genotype them using the GATK')
-    parser.add_argument('-g','--gatk',dest='gatk',help="Location of the GATK", required=True)
-    parser.add_argument('-x','--xmx',dest='xmx', help="Memory to use with JAVA", required=True)
-    parser.add_argument('-c','--cores', dest='cores', help="Number of cores to use")
-    parser.add_argument('-o','--output',dest='output', help='Final output from the haplotype caller')
-    parser.add_argument('-r','--reference', dest='reference', help='Reference FASTA file')
-    parser.add_argument('bams',nargs="*",help='gVCF variant call files output from the GATK')
+    parser.add_argument('-g', '--gatk', dest='gatk', help="Location of the GATK", required=True)
+    parser.add_argument('-x', '--xmx', dest='xmx', help="Memory to use with JAVA", required=True)
+    parser.add_argument('-c', '--cores', dest='cores', help="Number of cores to use")
+    parser.add_argument('-o', '--output', dest='output', help='Final output from the haplotype caller')
+    parser.add_argument('-r', '--reference', dest='reference', help='Reference FASTA file')
+    parser.add_argument('-d', '--out_directory', dest='directory', help='Output director')
+    parser.add_argument('bams', nargs="*", help='gVCF variant call files output from the GATK')
     args = parser.parse_args()
     args.cores = int(args.cores)
-    args.xmx= args.xmx.strip('"')
-    genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores, bams=args.bams, reference=args.reference) 
-    outputs = merge_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores, gvcfs=genovcfs, reference=args.reference) 
-    combine_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores, inputs=args.gvcfs, output=args.output, reference=args.reference)
-    #haplotype_single(gatk=args.gatk, xmx=args.xmx, cores=args.cores, inputs=args.gvcfs, reference=args.reference)
+    args.xmx = args.xmx.strip('"')
+    genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
+                                bams=args.bams, reference=args.reference,
+                                out_directory=args.directory)
+    outputs = merge_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
+                          gvcfs=genovcfs, reference=args.reference)
+    genotype_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
+                  inputs=outputs, output=args.output, reference=args.reference)
+    #haplotype_single(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
+                  #   inputs=args.gvcfs, reference=args.reference)
+
 
 
 if __name__ == "__main__":
