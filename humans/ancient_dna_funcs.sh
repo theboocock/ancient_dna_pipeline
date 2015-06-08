@@ -38,8 +38,7 @@ consensus_sequences(){
 }
 
 index_bams(){
-    parallel -gg${CORES} "java ${XMX} -jar ${PICARD}/BuildBamIndex.jar \
-        INPUT={} VALIDATION_STRINGENCY=LENIENT" ::: $SAM_SEARCH_EXPAND
+    parallel -j ${CORES} "samtools index {}" ::: $SAM_SEARCH_EXPAND
 }
 call_variants_samtools(){
     vcf_output=$SETUP_FILE.vcf
@@ -101,6 +100,9 @@ indel_realignment(){
         -targetIntervals ${tmp_dir}/{/.}.intervals
         -o {/.}.realigned.bam" ::: $SAM_SEARCH_EXPAND
         SAM_SEARCH_EXPAND=$tmp_dir/*.realigned.bam
+}
+map_damage_filtered_plots(){
+    parallel --env PATH -j $CORES "samtools view -q 20 {} |  mapDamage -i - -d ${results_dir}/damage_plots/ -r ${reference} --plot-only" ::: ${results_dir}/bams/*.bam
 }
 
 map_damage(){

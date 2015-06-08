@@ -76,10 +76,11 @@ def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
     except OSError:
         pass
     for sample, bams in bam_pairs.items():
-        output = os.path.join(out_directory , os.path.basename(sample + '.g.vcf'))
+        output = os.path.join(out_directory, os.path.basename(sample + '.g.vcf'))
         command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output)
         command = command + ' -I ' + ' -I '.join(bams)
         commands.append(command)
+        gvcfs.append(output)
     queue_jobs(commands, 'haplotypeCaller', cores)
     return gvcfs
 
@@ -119,7 +120,7 @@ def merge_gvcfs(gatk, xmx, cores, gvcfs, reference):
 #       commands.append(command)
 #   queue_jobs(commands,'haplotypeCaller',1)
 
-def genotype_gvcfs(gatk, xmx, cores, 
+def genotype_gvcfs(gatk, xmx, cores,
                    inputs, output,
                    reference):
     """
@@ -144,8 +145,10 @@ def main():
     parser.add_argument('-g', '--gatk', dest='gatk', help="Location of the GATK", required=True)
     parser.add_argument('-x', '--xmx', dest='xmx', help="Memory to use with JAVA", required=True)
     parser.add_argument('-c', '--cores', dest='cores', help="Number of cores to use")
-    parser.add_argument('-o', '--output', dest='output', help='Final output from the haplotype caller')
-    parser.add_argument('-r', '--reference', dest='reference', help='Reference FASTA file')
+    parser.add_argument('-o', '--output', dest='output', 
+                        help='Final output from the haplotype caller')
+    parser.add_argument('-r', '--reference', dest='reference', 
+                        help='Reference FASTA file')
     parser.add_argument('-d', '--out_directory', dest='directory', help='Output director')
     parser.add_argument('bams', nargs="*", help='gVCF variant call files output from the GATK')
     args = parser.parse_args()
