@@ -15,8 +15,10 @@ HAPLOTYPE_CALLER = """
     java -jar {0} \
     {1} \
     -T HaplotypeCaller \
+    --emitRefConfidence GVCF
     -R {2} \
     -o {3} \
+    --sample_ploidy {4}
 """
 
 MERGE_GVCFS_TEMPLATE = """
@@ -33,7 +35,7 @@ GENOTYPEGVCFS_TEMPLATE = """
     -T GenotypeGVCFs \
     -R {2} \
     -o {3} \
-    --standard_min_confidence_threshold_for_calling 10
+    --standard_min_confidence_threshold_for_calling 10 \
 """
 
 
@@ -56,7 +58,7 @@ def get_bam_pairs(bams):
             bam_list[sample_id] = [bam]
     return bam_list
 
-def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
+def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy):
     """
         Function creates gVCFS using the GATK.
 
@@ -77,7 +79,7 @@ def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
         pass
     for sample, bams in bam_pairs.items():
         output = os.path.join(out_directory, os.path.basename(sample + '.g.vcf'))
-        command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output)
+        command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output, ploidy)
         command = command + ' -I ' + ' -I '.join(bams)
         commands.append(command)
         gvcfs.append(output)
@@ -149,6 +151,8 @@ def main():
                         help='Final output from the haplotype caller')
     parser.add_argument('-r', '--reference', dest='reference', 
                         help='Reference FASTA file')
+    parser.add_argument('-p', '--ploidy', dest='ploidy', 
+                        help="Sample ploidy", default=2)
     parser.add_argument('-d', '--out_directory', dest='directory', help='Output director')
     parser.add_argument('bams', nargs="*", help='gVCF variant call files output from the GATK')
     args = parser.parse_args()
@@ -156,11 +160,11 @@ def main():
     args.xmx = args.xmx.strip('"')
     genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                                 bams=args.bams, reference=args.reference,
-                                out_directory=args.directory)
+                                out_directory=args.directory, ploidy=args.ploidy)
     outputs = merge_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                           gvcfs=genovcfs, reference=args.reference)
     genotype_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
-                  inputs=outputs, output=args.output, reference=args.reference)
+                   inputs=outputs, output=args.output, reference=args.reference)
     #haplotype_single(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                   #   inputs=args.gvcfs, reference=args.reference)
 

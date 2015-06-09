@@ -65,13 +65,14 @@ merge_bams(){
 haplocaller_combine(){
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
-    merge_and_genotype_GATK.py -c $CORES -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND}
+    merge_and_genotype_GATK.py -p ${PLOIDY} -c $CORES -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND}
 }
 
 vcf_filter(){
+    vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     vcf_input=$vcf_output 
     # Filter VCF removing samples having low coverage. 
-    samples_to_keep.py -m 95 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
+    samples_to_keep.py -m 20 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
     mv tmp.vcf $vcf_input
     $JAVA7 $XMX -jar $GATK \
         -T VariantFiltration \
@@ -102,7 +103,7 @@ indel_realignment(){
         SAM_SEARCH_EXPAND=$tmp_dir/*.realigned.bam
 }
 map_damage_filtered_plots(){
-    parallel --env PATH -j $CORES "samtools view -q 20 {} |  mapDamage -i - -d ${results_dir}/damage_plots/ -r ${reference} --plot-only" ::: ${results_dir}/bams/*.bam
+    parallel --env PATH -j $CORES "samtools view -h -q 20 {} |  mapDamage -i - -d ${results_dir}/damage_plots/{} -r ${reference} --title {/.} " ::: ${results_dir}/bams/*.bam
 }
 
 map_damage(){

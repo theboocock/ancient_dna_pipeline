@@ -30,6 +30,8 @@ def filter_sample(min_coverage, coverage_file):
     for sample, coverage in cov_hash.items():
         if coverage >= min_coverage:
             samples_to_keep.append(sample)
+        else:
+            print "SAMPLE {0} removed because of low coverage".format(sample)
     return samples_to_keep
 
 def bcftools_filter(vcf_input, vcf_output, samples_to_keep):
