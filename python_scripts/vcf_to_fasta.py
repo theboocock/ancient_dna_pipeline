@@ -111,7 +111,6 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                 genotype = genotype.split("|")
             # If pl is greater than zero
             ref = record.REF
-            irint 'ummmmmmm'
             alt = record.ALT
             # Gl is substituted
             if free_bayes or int(pl) > 0:
