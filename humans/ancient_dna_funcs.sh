@@ -220,11 +220,11 @@ coverage_plots(){
 }
 
 coverage_plots_R(){
-    parallel -j ${CORES} "samtools mpileup -D {} > $tmp_dir/{/.}.tmpcov" ::: $results_dir/merged/*.bam
+    parallel -j ${CORES} "samtools view -hb -q 20 {} | samtools mpileup -D - > $tmp_dir/{/.}.tmpcov" ::: $results_dir/merged/*.bam
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     mkdir ${results_dir}/coverage/files
     parallel -j ${CORES} " mv {} ${results_dir}/coverage/files/{/}" ::: $tmp_dir/*.cov
-        parallel -j 1 "$RSCRIPTS/coverage_script.R -C \"${CONTAMINATION_MAPPING}\"   -d ${results_dir}/coverage -s {/.} -o {/.} -c {} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt" ::: ${results_dir}/coverage/files/*.cov      
+    parallel -j 1 "$RSCRIPTS/coverage_script.R -C \"${CONTAMINATION_MAPPING}\"   -d ${results_dir}/coverage -s {/.} -o {/.} -c {} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt " ::: ${results_dir}/coverage/files/*.cov      
 }
 
 add_and_or_replace_groups(){

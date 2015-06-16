@@ -301,7 +301,7 @@ if [[ $TRAITS_FILE != "" ]]; then
 fi
 
 map_damage_filtered_plots
-# Clear this fucknig tmp_dir
+ Clear this fucknig tmp_dir
 
 CLEAR_DIR="TRUE"
 if [[ $CLEAR_DIR = "TRUE" ]]; then 
