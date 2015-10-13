@@ -90,6 +90,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                     gp = sample['GP']
                     g_l = [float(o) for o in gp]
                     if max(g_l) < min_probs:
+                        #print sample
                         sample_fasta[sample.sample][temp_position] = 'N'
                         continue
                     pl = g_l.index(max(g_l))
@@ -135,6 +136,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                             gt = real_gt[i]
                             if free_bayes and len(str(alt)) > 1:
                                 real_gt = str(alt[0])
+                            #print(temp_position)
                             sample_fasta[sample][temp_position] = gt
                         elif len(real_gt) > len(ref) and i != 0:
                             if use_indels:

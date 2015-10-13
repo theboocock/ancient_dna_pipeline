@@ -64,8 +64,21 @@ merge_bams(){
 
 haplocaller_combine(){
     SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
+    echo "Running the GATK"
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
-    merge_and_genotype_GATK.py -p ${PLOIDY} -c $CORES -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND}
+    # Limit the number of cores to 1
+    if [[ $CONTAMINATION_MAPPING  != "" ]]; then
+        for item in $SAM_SEARCH_EXPAND
+        do
+            echo $item
+            res=$(samtools view -H $item | grep "SN:${CONTAMINATION_MAPPING}" | awk '{ split($3,a,"LN:"); print a[2];}')
+            echo $CONTAMINATION_MAPPING 1 $res | tr ' ' $'\t' > temp_regions.bed
+            break
+        done
+        merge_and_genotype_GATK.py -p ${PLOIDY} -b temp_regions.bed -c ${CORES} -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND} 
+    else
+        merge_and_genotype_GATK.py -p ${PLOIDY} -c ${CORES} -r ${reference} -g ${GATK} -x \"${XMX}\" -o ${vcf_output}  -d ${results_dir}/gvcfs ${SAM_SEARCH_EXPAND} 
+    fi
 }
 
 vcf_filter(){
@@ -162,6 +175,7 @@ fi
 }
 vcf_to_fasta(){
 #    parallel -j ${CORES} "vcf_to_fasta.py -i {} -o ${results_dir}/{/.}.fa -r ${reference} -s human" ::: ${tmp_dir}/*.ss.vcf
+    vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     if [[ $CONTAMINATION_MAPPING != "" ]]; then
         vcf_to_fasta.py -i ${vcf_output} -o ${results_dir}/final_fasta.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY   -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
         vcf_to_fasta.py -i ${results_dir}/$SETUP_FILE.filter.vcf -o ${results_dir}/final_fasta_filtered.fa -r ${reference} -s $SPECIES --ploidy $PLOIDY  -m $CONTAMINATION_MAPPING $results_dir/coverage/files/*cov
@@ -224,7 +238,9 @@ coverage_plots_R(){
     parallel -j ${CORES} "cat {} | cut -d $'\t' -f 1,2,3,4 > $tmp_dir/{/.}.cov" ::: ${tmp_dir}/*.tmpcov
     mkdir ${results_dir}/coverage/files
     parallel -j ${CORES} " mv {} ${results_dir}/coverage/files/{/}" ::: $tmp_dir/*.cov
-    parallel -j 1 "$RSCRIPTS/coverage_script.R -C \"${CONTAMINATION_MAPPING}\"   -d ${results_dir}/coverage -s {/.} -o {/.} -c {} -r ${reference} -t ${results_dir}/coverage/coverage_data.txt " ::: ${results_dir}/coverage/files/*.cov      
+    reference_full_path=$(realpath ${reference})
+    echo $reference_full_path
+    parallel -j 1 "${RSCRIPTS}/coverage_script.R -C \"${CONTAMINATION_MAPPING}\"   -d ${results_dir}/coverage -s {/.} -o {/.} -c {} -r ${reference_full_path} -t ${results_dir}/coverage/coverage_data.txt " ::: ${results_dir}/coverage/files/*.cov      
 }
 
 add_and_or_replace_groups(){
@@ -271,19 +287,24 @@ store_bams(){
 
 beagle_imputation(){
     vcf_input=$results_dir/$SETUP_FILE.filter.recal.vcf  
+    echo $PLOIDY
     if [[ $PLOIDY = "1" ]]; then
-        cat $results_dir/$SETUP_FILE.filter.vcf | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/" | perl -pe "s/\t\.:/\t\.\/\.:/g" > $vcf_input 
+        cat $results_dir/$SETUP_FILE.filter.vcf | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/g" | perl -pe "s/\t\.:/\t\.\/\.:/g" > $vcf_input
+        echo "MERGED VARIANTS" 
         zero_info.py $vcf_input > tmp.tmp
-        mv tmp.tmp $vcf_input
+        cat tmp.tmp | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/g" | perl -pe "s/\t\.:/\t\.\/\.:/g" | perl -pe "s/\t3:/\t3\/3:/g" > $vcf_input
+        #rm tmp.tmp 
         percentage_imputed.py $vcf_input | sort -k 1 > ${results_dir}/imputed_percentage.txt
     elif [[ PLOIDY = "2" ]]; then
         recal_vcf.py $results_dir/$SETUP_FILE.filter.vcf >  $vcf_input
     fi 
     # This function crates the imputed files for further processing.
     java -jar $BEAGLE gt=${vcf_input} out=tmp
-    gzcat tmp.vcf.gz > $results_dir/$SETUP_FILE.impute.vcf
+    # TODO fix platform specific problem
+    zcat tmp.vcf.gz > $results_dir/$SETUP_FILE.impute.vcf
     impute_vcf=$results_dir/$SETUP_FILE.impute.vcf
 }
+    impute_vcf=$results_dir/$SETUP_FILE.impute.vcf
 
 #remove_g_a_c_t(){
    #cat $results_dir/pipeline_setup.txt.filter.vcf | ack -v  "G\tA|C\tT" > $results_dir/ancient_strict.vcf

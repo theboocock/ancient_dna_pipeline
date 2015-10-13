@@ -58,7 +58,7 @@ def get_bam_pairs(bams):
             bam_list[sample_id] = [bam]
     return bam_list
 
-def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy):
+def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy, bed_file=None):
     """
         Function creates gVCFS using the GATK.
 
@@ -80,10 +80,14 @@ def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy):
     for sample, bams in bam_pairs.items():
         output = os.path.join(out_directory, os.path.basename(sample + '.g.vcf'))
         command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output, ploidy)
-        command = command + ' -I ' + ' -I '.join(bams)
+        command = command + ' -I ' + ' -I '.join(bams) 
+        command = command + ' -bamout ' + output + ".bam"
+        if bed_file is not None:
+            command  = command + " -L " + bed_file
         commands.append(command)
+        print command
         gvcfs.append(output)
-    queue_jobs(commands, 'haplotypeCaller', cores)
+    queue_jobs(commands, "haplotypeCaller", cores)
     return gvcfs
 
 SPLIT_SIZE = 100
@@ -123,19 +127,23 @@ def merge_gvcfs(gatk, xmx, cores, gvcfs, reference):
 #   queue_jobs(commands,'haplotypeCaller',1)
 
 def genotype_gvcfs(gatk, xmx, cores,
-                   inputs, output,
-                   reference):
+        inputs, output,
+        reference, bed_file=None):
     """
         Genotype GVCFs using the GATK
     """
     commands = []
     command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
     command = command + ' --variant ' + ' --variant '.join(inputs)
+    if bed_file is not None:
+        command  = command + " -L " + bed_file
     commands.append(command)
     output = os.path.join(os.path.dirname(output), 'all_sites.vcf')
     command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
     command = command + ' --variant ' + ' --variant '.join(inputs)
     command = command + ' --includeNonVariantSites'
+    if bed_file is not None:
+        command  = command + " -L " + bed_file
     commands.append(command)
     queue_jobs(commands, "genotypeGVCFs", cores)
 
@@ -151,6 +159,8 @@ def main():
                         help='Final output from the haplotype caller')
     parser.add_argument('-r', '--reference', dest='reference', 
                         help='Reference FASTA file')
+    parser.add_argument('-b','--bed', dest='bed_file',
+                        help="Bed file for limiting the GATK")
     parser.add_argument('-p', '--ploidy', dest='ploidy', 
                         help="Sample ploidy", default=2)
     parser.add_argument('-d', '--out_directory', dest='directory', help='Output director')
@@ -160,11 +170,11 @@ def main():
     args.xmx = args.xmx.strip('"')
     genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                                 bams=args.bams, reference=args.reference,
-                                out_directory=args.directory, ploidy=args.ploidy)
+                                out_directory=args.directory, ploidy=args.ploidy, bed_file=args.bed_file)
     outputs = merge_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                           gvcfs=genovcfs, reference=args.reference)
     genotype_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
-                   inputs=outputs, output=args.output, reference=args.reference)
+                   inputs=outputs, output=args.output, reference=args.reference,bed_file=args.bed_file)
     #haplotype_single(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                   #   inputs=args.gvcfs, reference=args.reference)
 
