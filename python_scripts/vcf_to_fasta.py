@@ -90,8 +90,8 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                     gp = sample['GP']
                     g_l = [float(o) for o in gp]
                     if max(g_l) < min_probs:
+                        #print sample
                         sample_fasta[sample.sample][temp_position] = 'N'
-                        print('blah')
                         continue
                     pl = g_l.index(max(g_l))
                 else:
@@ -110,7 +110,6 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                 genotype = genotype.split('/')
             else:
                 genotype = genotype.split("|")
-
             # If pl is greater than zero
             ref = record.REF
             alt = record.ALT
@@ -126,7 +125,6 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                 no_alleles = 1 + len(alt)
                 if not free_bayes:
                     genotype = genotype[0]
-
                 real_gt = str(alt[int(genotype)-1])
                 if to_fasta:
                     if species == 'human':
@@ -138,6 +136,7 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                             gt = real_gt[i]
                             if free_bayes and len(str(alt)) > 1:
                                 real_gt = str(alt[0])
+                            #print(temp_position)
                             sample_fasta[sample][temp_position] = gt
                         elif len(real_gt) > len(ref) and i != 0:
                             if use_indels:
@@ -158,15 +157,34 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                     if species == 'human':
                         if position == 955 and  "ACCCC" in str(alt[0]):
                             sample_lines[sample].extend(["960.1CCCCC"])
+                            try:
+                                unique_snps["960.1CCCCC"] += 1
+                            except KeyError:
+                                unique_snps["960.1CCCCC"] = 1
                             continue
                         if position == 8270 and ref == "CACCCCCTCT":
                             sample_lines[sample].extend([str(i)+"d" for i in range(8281, 8290)])
+                            for item in [str(i) +"d" for i in range(8281, 8290)]:
+                                try:
+                                    unique_snps[item] += 1
+                                except KeyError:
+                                    unique_snps[item] = 1
                             continue
                         if position == 285 and ref == "CAA":
                             sample_lines[sample].extend([str(i) + "d" for i in range(290, 293)])
+                            for item in [str(i) +"d" for i in range(290, 293)]:
+                                try:
+                                    unique_snps[item] += 1
+                                except KeyError:
+                                    unique_snps[item] = 1
                             continue
                         if position == 247 and ref == "GA":
                             sample_lines[sample].extend([str(249) + "d"])
+                            item = str(249) + "d"
+                            try:
+                                unique_snps[item] += 1
+                            except KeyError:
+                                unique_snps[item] = 1
                             continue
                     for i in range(0, max(len(real_gt), len(ref))):
                         if i == (len(real_gt) - 1) and i == (len(ref)- 1):
@@ -297,7 +315,7 @@ def main():
     parser.add_argument('--use-indels', dest='use_indels', action="store_true",
                         help="Do not use indels in the analysis", default=False)
     parser.add_argument('--min-depth', dest="min_depth",
-                        default=2)
+                        default=0)
     parser.add_argument('--free-bayes', dest='free_bayes', default=False,
                         action="store_true")
     parser.add_argument('--ploidy', dest='ploidy', default=2)

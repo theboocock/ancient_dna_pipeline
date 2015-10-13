@@ -12,6 +12,7 @@ def process_fastqs(fastqs):
     for fastq in fastqs:
         try:
             name = fastq.split('_')[0]
+            name = name.split('-')[0]
             read = fastq.split('_')[3]
             name = name+"_"+read
             try:
@@ -21,11 +22,9 @@ def process_fastqs(fastqs):
         except IndexError:
             pass
     for fq_name, fq_list in fastq_dict.items():
-
-        if(len(fq_list) > 1):
             name = fq_name.split('_')[0]
             read = fq_name.split('_')[1]
-            output_name = open(name+ "_merged_libraries_"+read+".fastq", 'w')
+            output_name = open(name+ "_merged_libraries_"+read+"_001.fastq", 'w')
             cmd = ['cat']
             cmd.extend(fq_list)
             check_call(cmd, stdout=output_name)

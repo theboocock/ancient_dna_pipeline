@@ -15,8 +15,10 @@ HAPLOTYPE_CALLER = """
     java -jar {0} \
     {1} \
     -T HaplotypeCaller \
+    --emitRefConfidence GVCF
     -R {2} \
     -o {3} \
+    --sample_ploidy {4}
 """
 
 MERGE_GVCFS_TEMPLATE = """
@@ -33,7 +35,7 @@ GENOTYPEGVCFS_TEMPLATE = """
     -T GenotypeGVCFs \
     -R {2} \
     -o {3} \
-    --standard_min_confidence_threshold_for_calling 10
+    --standard_min_confidence_threshold_for_calling 10 \
 """
 
 
@@ -56,7 +58,7 @@ def get_bam_pairs(bams):
             bam_list[sample_id] = [bam]
     return bam_list
 
-def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
+def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy, bed_file=None):
     """
         Function creates gVCFS using the GATK.
 
@@ -76,11 +78,16 @@ def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory):
     except OSError:
         pass
     for sample, bams in bam_pairs.items():
-        output = os.path.join(out_directory , os.path.basename(sample + '.g.vcf'))
-        command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output)
-        command = command + ' -I ' + ' -I '.join(bams)
+        output = os.path.join(out_directory, os.path.basename(sample + '.g.vcf'))
+        command = HAPLOTYPE_CALLER.format(xmx, gatk, reference, output, ploidy)
+        command = command + ' -I ' + ' -I '.join(bams) 
+        command = command + ' -bamout ' + output + ".bam"
+        if bed_file is not None:
+            command  = command + " -L " + bed_file
         commands.append(command)
-    queue_jobs(commands, 'haplotypeCaller', cores)
+        print command
+        gvcfs.append(output)
+    queue_jobs(commands, "haplotypeCaller", cores)
     return gvcfs
 
 SPLIT_SIZE = 100
@@ -119,20 +126,24 @@ def merge_gvcfs(gatk, xmx, cores, gvcfs, reference):
 #       commands.append(command)
 #   queue_jobs(commands,'haplotypeCaller',1)
 
-def genotype_gvcfs(gatk, xmx, cores, 
-                   inputs, output,
-                   reference):
+def genotype_gvcfs(gatk, xmx, cores,
+        inputs, output,
+        reference, bed_file=None):
     """
         Genotype GVCFs using the GATK
     """
     commands = []
     command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
     command = command + ' --variant ' + ' --variant '.join(inputs)
+    if bed_file is not None:
+        command  = command + " -L " + bed_file
     commands.append(command)
     output = os.path.join(os.path.dirname(output), 'all_sites.vcf')
     command = GENOTYPEGVCFS_TEMPLATE.format(xmx, gatk, reference, output)
     command = command + ' --variant ' + ' --variant '.join(inputs)
     command = command + ' --includeNonVariantSites'
+    if bed_file is not None:
+        command  = command + " -L " + bed_file
     commands.append(command)
     queue_jobs(commands, "genotypeGVCFs", cores)
 
@@ -144,8 +155,14 @@ def main():
     parser.add_argument('-g', '--gatk', dest='gatk', help="Location of the GATK", required=True)
     parser.add_argument('-x', '--xmx', dest='xmx', help="Memory to use with JAVA", required=True)
     parser.add_argument('-c', '--cores', dest='cores', help="Number of cores to use")
-    parser.add_argument('-o', '--output', dest='output', help='Final output from the haplotype caller')
-    parser.add_argument('-r', '--reference', dest='reference', help='Reference FASTA file')
+    parser.add_argument('-o', '--output', dest='output', 
+                        help='Final output from the haplotype caller')
+    parser.add_argument('-r', '--reference', dest='reference', 
+                        help='Reference FASTA file')
+    parser.add_argument('-b','--bed', dest='bed_file',
+                        help="Bed file for limiting the GATK")
+    parser.add_argument('-p', '--ploidy', dest='ploidy', 
+                        help="Sample ploidy", default=2)
     parser.add_argument('-d', '--out_directory', dest='directory', help='Output director')
     parser.add_argument('bams', nargs="*", help='gVCF variant call files output from the GATK')
     args = parser.parse_args()
@@ -153,11 +170,11 @@ def main():
     args.xmx = args.xmx.strip('"')
     genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                                 bams=args.bams, reference=args.reference,
-                                out_directory=args.directory)
+                                out_directory=args.directory, ploidy=args.ploidy, bed_file=args.bed_file)
     outputs = merge_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                           gvcfs=genovcfs, reference=args.reference)
     genotype_gvcfs(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
-                  inputs=outputs, output=args.output, reference=args.reference)
+                   inputs=outputs, output=args.output, reference=args.reference,bed_file=args.bed_file)
     #haplotype_single(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                   #   inputs=args.gvcfs, reference=args.reference)
 
