@@ -1,3 +1,0 @@
-#
-# Fastq filtering, 
-#
