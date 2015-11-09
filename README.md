@@ -1,15 +1,20 @@
 ancient DNA pipeline.
 ====================
 
-Uses M through Z (e.g The Data analysis part of a aDNA experiment)
+Processes ancient DNA data that was generated using NGS.
 
-Runs the analysis for the Matisso smith lab stuff.
-
-
-ancient_dna_pipeline
-====================
+This pipeline employs a best practices approach for taking the data
+from Raw FASTQ files and creates a number of useful output files.
 
 
+Dependencies
+============
 
-Simple pipeline, which takes FASTA files to the end of pipeline - for easy processing of DNA data.
+    - Python >= 2.7
+    - pysam, PyVCF, and pyfasta.
+ 
+
+
+
+
 
