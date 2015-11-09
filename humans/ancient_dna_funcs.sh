@@ -85,7 +85,7 @@ vcf_filter(){
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     vcf_input=$vcf_output 
     # Filter VCF removing samples having low coverage. 
-    samples_to_keep.py -m 90 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
+    samples_to_keep.py -m 10 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
     mv tmp.vcf $vcf_input
     $JAVA7 $XMX -jar $GATK \
         -T VariantFiltration \
