@@ -25,7 +25,7 @@ def check_fasta(fasta):
                 sys.exit(1)
 
 
-def extract_informative(fasta):
+def extract_informative(fasta, indels=None):
     """
         Extract variable sites from a fasta file
 
@@ -58,15 +58,21 @@ def extract_informative(fasta):
                     out_sequences[sequence] += alleles[j]
     for sequence in sequences: 
         print ">"+sequence
-        print out_sequences[sequence]
+        if indels == None:
+            print out_sequences[sequence]
         
 
 def main():
     parser = argparse.ArgumentParser(description="Extract informative sites")
     parser.add_argument("aligned_fasta")
+    parser.add_argument("-v","--vcf", dest="vcf", help="Extract genotypes from VCF")
     args = parser.parse_args()
     fasta_r = pyfasta.Fasta(args.aligned_fasta)
-    extract_informative(fasta_r)
+    indels=None
+    if args.vcf is not None:
+        # We should generate a list of indels for each sample
+        indels = get_indels_from_vcf(args.vcf)
+    extract_informative(fasta_r,indels)
 
 if __name__=="__main__":
     main()
