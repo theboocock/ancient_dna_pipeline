@@ -13,7 +13,7 @@ Installation
 Run ```./install.sh``` make sure the INSTALL_DIR variable in this script points to a directory
 that is located on your path.
 
-### Python
+#### Python
 
 Python dependencies can be installed by running.
 
@@ -21,17 +21,15 @@ Python dependencies can be installed by running.
 
 This will install pysam, PyVCF, pyfasta, and Biopython.
 
+#### mapDamage
 
-### mapDamage
+Navigate to ```src/mapDamage/``` and follow all installation instructions at http://ginolhac.github.io/mapDamage/.
 
-
-Navigate to ```src/mapDamage/``` and follow installation instructions at http://ginolhac.github.io/mapDamage/.
-
-### SeqMagick
+#### SeqMagick
 
 Navigate to ```src/seqmagick/``` and run ```python setup.py install```
 
-### AdapterRemoval
+#### AdapterRemoval
 
 Navigate to ```src/AdapterRemoval/``` and run the following commands.
 
@@ -39,7 +37,7 @@ Navigate to ```src/AdapterRemoval/``` and run the following commands.
     make
 
 Then ensure that the executable ```AdapterRemoval``` is on your path. 
-### External dependencies.
+#### External dependencies.
 
 All the following executable must be accesible from your path.
 
@@ -49,6 +47,17 @@ All the following executable must be accesible from your path.
 - bwa (http://bio-bwa.sourceforge.net/)
 - samtools (http://samtools.github.io/)
 - bcftools (https://samtools.github.io/bcftools/)
+
+
+#### Example Run of the pipeline.
+
+Navigate into the ```tests/test_data/``` directory and run the following commands.
+
+    # generate pipeline_setup.txt 
+    create_pipeline_setup.sh . raw
+    # run pipeline for human mtDNA. make sure you replace the path to the reference file. 
+    ancient_pipeline.sh -C "gi|251831106|ref|NC_012920.1|" -r ~/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa  \ -S "human" -t  -P 1
+    
 
 
 
