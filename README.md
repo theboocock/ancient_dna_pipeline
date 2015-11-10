@@ -43,7 +43,7 @@ All the following executable must be accesible from your path.
 
 - Muscle (http://www.drive5.com/muscle/)
 - R programming language (https://www.r-project.org/) with the packages
-    - ggplot2, Biostrings, getopt installed
+    - ggplot2, Biostrings, getopt.
 - bwa (http://bio-bwa.sourceforge.net/)
 - samtools (http://samtools.github.io/)
 - bcftools (https://samtools.github.io/bcftools/)
