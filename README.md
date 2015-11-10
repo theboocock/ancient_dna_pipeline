@@ -47,7 +47,7 @@ All the following executable must be accesible from your path.
 - bwa (http://bio-bwa.sourceforge.net/)
 - samtools (http://samtools.github.io/)
 - bcftools (https://samtools.github.io/bcftools/)
-
+- parallel (https://www.gnu.org/software/parallel/)
 
 #### Example Run of the pipeline.
 
