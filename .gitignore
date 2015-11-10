@@ -1,2 +1,4 @@
 tests/test_run/*
-
+tests/test_data/*
+!tests/test_data/sample_R1_001.fastq 
+!tests/test_data/sample_R2_001.fastq
