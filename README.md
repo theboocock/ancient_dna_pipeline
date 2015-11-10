@@ -56,7 +56,9 @@ Navigate into the ```tests/test_data/``` directory and run the following command
     # generate pipeline_setup.txt 
     create_pipeline_setup.sh . raw
     # run pipeline for human mtDNA. make sure you replace the path to the reference file. 
-    ancient_pipeline.sh -C "gi|251831106|ref|NC_012920.1|" -r ~/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa  \ -S "human" -t  -P 1
+    ancient_pipeline.sh -C "gi|251831106|ref|NC_012920.1|" \
+    -r ~/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa  \ 
+    -S "human" -t  -P 1
     
 
 
