@@ -10,7 +10,7 @@ from Raw FASTQ files and creates a number of useful output files.
 Installation
 ============
 
-Run ```./install.sh``` make sure the INSTALL_DIR variable in this script points to a directory
+Run ```./install.sh``` but before running make sure the INSTALL_DIR variable in this script points to a directory
 that is located on your path.
 
 #### Python
