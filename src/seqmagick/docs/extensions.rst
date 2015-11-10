@@ -1,0 +1,27 @@
+========= ==============
+Extension Format        
+========= ==============
+.afa      fasta         
+.aln      clustal       
+.fa       fasta         
+.faa      fasta         
+.fas      fasta         
+.fasta    fasta         
+.fastq    fastq         
+.ffn      fasta         
+.fna      fasta         
+.fq       fastq         
+.frn      fasta         
+.gb       genbank       
+.gbk      genbank       
+.needle   emboss        
+.nex      nexus         
+.phy      phylip        
+.phylip   phylip        
+.phyx     phylip-relaxed
+.qual     qual          
+.sff      sff-trim      
+.sth      stockholm     
+.sto      stockholm     
+========= ==============
+

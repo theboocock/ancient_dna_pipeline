@@ -1,0 +1,7 @@
+[bwa_aln_core] convert to sequence coordinate... 0.00 sec
+[bwa_aln_core] refine gapped alignments... 0.00 sec
+[bwa_aln_core] print alignments... 0.01 sec
+[bwa_aln_core] 9473 sequences have been processed.
+[main] Version: 0.7.12-r1039
+[main] CMD: bwa samse /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa tmp1.sai temp_results/./sample_R1_001.fastq.collapsed
+[main] Real time: 0.060 sec; CPU: 0.056 sec

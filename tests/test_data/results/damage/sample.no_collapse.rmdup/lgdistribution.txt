@@ -1,0 +1,4 @@
+# table produced by mapDamage version 2.0.2-9-g88d2925-dirty
+# using mapped file temp_results/sample.no_collapse.rmdup.bam and /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa as reference file
+# Std: strand of reads
+Std	Length	Occurences 

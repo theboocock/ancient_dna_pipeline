@@ -1,0 +1,8 @@
+2015-11-10 18:27:25,614	INFO	main: Started with the command: /Users/smilefreak/Library/Python/2.7/bin/mapDamage -i temp_results/sample.no_collapse.rmdup.bam -d results/damage/sample.no_collapse.rmdup --rescale -r /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa
+2015-11-10 18:27:25,632	DEBUG	main: BAM read in 1.114988 seconds
+2015-11-10 18:28:33,416	INFO	main: Started with the command: /Users/smilefreak/Library/Python/2.7/bin/mapDamage -i temp_results/sample.no_collapse.rmdup.bam -d results/damage/sample.no_collapse.rmdup --rescale -r /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa
+2015-11-10 18:28:33,435	DEBUG	main: BAM read in 1.349024 seconds
+2015-11-10 18:28:33,918	INFO	mapdamage.rscript: Performing Bayesian estimates
+2015-11-10 18:28:33,918	DEBUG	mapdamage.rscript: Call: Rscript /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/runGeneral.R --args 30 10000 10 50000 0 0 1 1 0 0 1 12 results/damage/sample.no_collapse.rmdup/ /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/ results/damage/sample.no_collapse.rmdup/Stats_out 0 0 0 results/damage/sample.no_collapse.rmdup/acgt_ratio.csv 0 0
+2015-11-10 18:28:34,526	DEBUG	mapdamage.rscript: Bayesian estimates completed in 0.608508 seconds
+2015-11-10 18:28:34,527	INFO	mapdamage.rescale: Rescaling BAM: 'temp_results/sample.no_collapse.rmdup.bam' -> 'results/damage/sample.no_collapse.rmdup/sample.no_collapse.rmdup.rescaled.bam'

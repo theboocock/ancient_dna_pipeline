@@ -1,0 +1,1 @@
+sample ./sample_R1_001.fastq ./sample_R2_001.fastq

@@ -24,7 +24,8 @@ This will install pysam, PyVCF, pyfasta, and Biopython.
 
 ### mapDamage
 
-Navigate to ```src/mapDamage/``` and run ```python setup.py install```
+
+Navigate to ```src/mapDamage/``` and follow installation instructions at http://ginolhac.github.io/mapDamage/.
 
 ### SeqMagick
 

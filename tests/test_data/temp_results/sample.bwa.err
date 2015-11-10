@@ -1,0 +1,15 @@
+[M::bwa_idx_load_from_disk] read 0 ALT contigs
+[M::process] read 20000 sequences (1520000 bp)...
+[M::mem_pestat] # candidate unique pairs for (FF, FR, RF, RR): (0, 1840, 0, 0)
+[M::mem_pestat] skip orientation FF as there are not enough pairs
+[M::mem_pestat] analyzing insert size distribution for orientation FR...
+[M::mem_pestat] (25, 50, 75) percentile: (57, 73, 93)
+[M::mem_pestat] low and high boundaries for computing mean and std.dev: (1, 165)
+[M::mem_pestat] mean and std.dev: (76.87, 26.43)
+[M::mem_pestat] low and high boundaries for proper pairs: (1, 201)
+[M::mem_pestat] skip orientation RF as there are not enough pairs
+[M::mem_pestat] skip orientation RR as there are not enough pairs
+[M::mem_process_seqs] Processed 20000 reads in 0.821 CPU sec, 0.140 real sec
+[main] Version: 0.7.12-r1039
+[main] CMD: bwa mem -M -t 6 /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa ./sample_R1_001.fastq ./sample_R2_001.fastq
+[main] Real time: 0.223 sec; CPU: 0.890 sec
