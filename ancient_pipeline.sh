@@ -215,91 +215,91 @@ fi
 echo "MApdamage status"
 echo $MAP_DAMAGE
 
-if [[ $START_POS = 'MAP_READS' ]]; then
-    map_reads
-    echo "DONE MAP READS" >> .fin_pipeline
-    sort_bam
-    echo "DONE SORT BAM" >> .fin_pipeline
-    if [[ $MAP_DAMAGE != "TRUE" ]]; then
-        mark_duplicates
-        echo "DONE MARK DUPLICATES" >> .fin_pipeline
-    fi
-    index_bams
-    add_and_or_replace_groups 
-    echo "DONE REPLACE_GROUPS" >> .fin_pipeline
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-    if [[ $CONTAMINATION_MAPPING != "" ]]; then
-        save_contaminants
-        remove_contaminants
-    fi
-    store_bams
-    echo "DONE STORE BAMS" >> .fin_pipeline
-    index_bams
-fi
+#if [[ $START_POS = 'MAP_READS' ]]; then
+#    map_reads
+#    echo "DONE MAP READS" >> .fin_pipeline
+#    sort_bam
+#    echo "DONE SORT BAM" >> .fin_pipeline
+#    if [[ $MAP_DAMAGE != "TRUE" ]]; then
+#        mark_duplicates
+#        echo "DONE MARK DUPLICATES" >> .fin_pipeline
+#    fi
+#    index_bams
+#    add_and_or_replace_groups 
+#    echo "DONE REPLACE_GROUPS" >> .fin_pipeline
+#    index_bams
+#    echo "DONE INDEX BAMS" >> .fin_pipeline
+#    if [[ $CONTAMINATION_MAPPING != "" ]]; then
+#        save_contaminants
+#        remove_contaminants
+#    fi
+#    store_bams
+#    echo "DONE STORE BAMS" >> .fin_pipeline
+#    index_bams
+#fi
+##
+##
+##
+#SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
+#merge_bams
+##remove_bad_samples
+##merge_the_same_samples
+#
+## TODO up until this point we are running single samples individually. 
+## Files may end up missing in the bams folder so need to be taken care
+## of before running into the next step
+##Run some map Damage
+## TODO COMPARE HaplotypeCaller and Samtools
+##call_variants_samtools
+#echo $MAP_DAMAGE
+#if [[ $MAP_DAMAGE != "TRUE" ]]; then
+#    map_damage  
+#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+#    index_bams
+#    echo "DONE INDEX BAMS" >> .fin_pipeline
+#fi
+#if [[ $PMD != "" ]]; then
+#    pmd
+#    echo "DONE PMD" >> .fin_pipeline
+#    index_bams
+#    echo "DONE INDEX BAMS" >> .fin_pipeline
+#fi
+#if [[ $MINIMAL = "TRUE" ]]; then
+#    haplotype_caller
+#    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
+#fi
+#haplocaller_combine
+#echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
+##
+#coverage_plots_R
+##
+#vcf_filter
+#if [[ $IMPUTATION = "TRUE" ]]; then
+#   # Imputation consists of two distinct steps,
+#   # Recalling the VCF, then using that with beagle imputation
+#   #
+#    beagle_imputation
+#fi
+#if [[ $MAP_DAMAGE != "" ]]; then
+#    contamination_percentage
+#    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
+#fi
 #
 #
+#echo "DONE VCF FILTER" >> .fin_pipeline
+#vcf_to_snp_list
 #
-SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
-merge_bams
-#remove_bad_samples
-#merge_the_same_samples
-
-# TODO up until this point we are running single samples individually. 
-# Files may end up missing in the bams folder so need to be taken care
-# of before running into the next step
-#Run some map Damage
-# TODO COMPARE HaplotypeCaller and Samtools
-#call_variants_samtools
-echo $MAP_DAMAGE
-if [[ $MAP_DAMAGE != "TRUE" ]]; then
-    map_damage  
-    echo "DONE MAP DAMAGE" >> .fin_pipeline 
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-fi
-if [[ $PMD != "" ]]; then
-    pmd
-    echo "DONE PMD" >> .fin_pipeline
-    index_bams
-    echo "DONE INDEX BAMS" >> .fin_pipeline
-fi
-if [[ $MINIMAL = "TRUE" ]]; then
-    haplotype_caller
-    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
-fi
-haplocaller_combine
-echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
+#vcf_to_haplogrep
+#echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 #
-coverage_plots_R
-#
-vcf_filter
-if [[ $IMPUTATION = "TRUE" ]]; then
-   # Imputation consists of two distinct steps,
-   # Recalling the VCF, then using that with beagle imputation
-   #
-    beagle_imputation
-fi
-if [[ $MAP_DAMAGE != "" ]]; then
-    contamination_percentage
-    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
-fi
-
-
-echo "DONE VCF FILTER" >> .fin_pipeline
-vcf_to_snp_list
-
-vcf_to_haplogrep
-echo "DONE VCF HAPLOGREP" >> .fin_pipeline
-
-vcf_to_fasta
-## VCF_to_fasta_before muscle
-align_muscle
-# Post-mortem damage 
-fasta_to_nexus
-if [[ $TRAITS_FILE != "" ]]; then
-    annotate_traits
-fi
+#vcf_to_fasta
+### VCF_to_fasta_before muscle
+#align_muscle
+## Post-mortem damage 
+#fasta_to_nexus
+#if [[ $TRAITS_FILE != "" ]]; then
+#    annotate_traits
+#fi
 
 map_damage_filtered_plots
 

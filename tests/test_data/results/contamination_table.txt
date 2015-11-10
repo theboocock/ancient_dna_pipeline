@@ -1,2 +1,0 @@
-sample_id	gi|5834843|ref|NC_001323.1|	gi|60101824|ref|NC_006853.1|	gi|17737322|ref|NC_002008.4|	gi|223976078|ref|NC_012095.1|
-results/contamination_merged/sample	0.0	0.0	0.00255553371339	0.000393159032829
