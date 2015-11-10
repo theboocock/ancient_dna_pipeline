@@ -11,18 +11,18 @@ Minimum genomic length: 25
 Collapse overlapping reads: Yes
 Minimum overlap (in case of collapse): 11
 
-Total number of read pairs: 10000
-Number of unaligned read pairs: 283
-Number of well aligned pairs: 9522
+Total number of read pairs: 20000
+Number of unaligned read pairs: 592
+Number of well aligned pairs: 19036
 Number of inadequate alignments: 0
-Number of discarded mate 1 reads: 195
+Number of discarded mate 1 reads: 372
 Number of singleton mate 1 reads: 0
-Number of discarded mate 2 reads: 194
+Number of discarded mate 2 reads: 371
 Number of singleton mate 2 reads: 1
 
-Number of read pairs with adapter: 6710
-Number of full-length collapsed pairs: 9473
-Number of truncated collapsed pairs: 49
-Number of retained reads: 10089
-Number of retained nucleotides: 639850
-Average read length of trimmed reads: 63.4206
+Number of read pairs with adapter: 13455
+Number of full-length collapsed pairs: 18947
+Number of truncated collapsed pairs: 89
+Number of retained reads: 20221
+Number of retained nucleotides: 1284745
+Average read length of trimmed reads: 63.5352

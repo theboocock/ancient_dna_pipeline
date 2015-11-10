@@ -6,3 +6,14 @@
 2015-11-10 18:28:33,918	DEBUG	mapdamage.rscript: Call: Rscript /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/runGeneral.R --args 30 10000 10 50000 0 0 1 1 0 0 1 12 results/damage/sample.no_collapse.rmdup/ /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/ results/damage/sample.no_collapse.rmdup/Stats_out 0 0 0 results/damage/sample.no_collapse.rmdup/acgt_ratio.csv 0 0
 2015-11-10 18:28:34,526	DEBUG	mapdamage.rscript: Bayesian estimates completed in 0.608508 seconds
 2015-11-10 18:28:34,527	INFO	mapdamage.rescale: Rescaling BAM: 'temp_results/sample.no_collapse.rmdup.bam' -> 'results/damage/sample.no_collapse.rmdup/sample.no_collapse.rmdup.rescaled.bam'
+2015-11-10 19:16:24,553	INFO	main: Started with the command: /Users/smilefreak/Library/Python/2.7/bin/mapDamage -i temp_results/sample.no_collapse.rmdup.bam -d results/damage/sample.no_collapse.rmdup --rescale -r /Users/smilefreak/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa
+2015-11-10 19:16:24,594	DEBUG	main: BAM read in 1.635611 seconds
+2015-11-10 19:16:25,080	INFO	mapdamage.rscript: Performing Bayesian estimates
+2015-11-10 19:16:25,080	DEBUG	mapdamage.rscript: Call: Rscript /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/runGeneral.R --args 30 10000 10 50000 0 0 1 1 0 0 1 12 results/damage/sample.no_collapse.rmdup/ /Users/smilefreak/Library/Python/2.7/lib/python/site-packages/mapdamage/Rscripts/stats/ results/damage/sample.no_collapse.rmdup/Stats_out 0 0 0 results/damage/sample.no_collapse.rmdup/acgt_ratio.csv 0 0
+2015-11-10 19:22:06,400	DEBUG	mapdamage.rscript: Bayesian estimates completed in 341.319614 seconds
+2015-11-10 19:22:06,400	INFO	mapdamage.rescale: Rescaling BAM: 'temp_results/sample.no_collapse.rmdup.bam' -> 'results/damage/sample.no_collapse.rmdup/sample.no_collapse.rmdup.rescaled.bam'
+2015-11-10 19:22:06,401	WARNING	mapdamage.rescale: Warning! Assuming the pairs are non-overlapping, facing inwards and correctly paired.
+2015-11-10 19:22:06,496	WARNING	mapdamage.rescale: Number of non-rescaled reads due to improper pairing:  4
+2015-11-10 19:22:06,502	DEBUG	mapdamage.rescale: Rescaling completed in 0.102003 seconds
+2015-11-10 19:22:06,502	INFO	main: Successful run
+2015-11-10 19:22:06,502	DEBUG	main: Run completed in 343.543879 seconds

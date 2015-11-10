@@ -13,6 +13,10 @@ Installation
 Run ```./install.sh``` but before running make sure the INSTALL_DIR variable in this script points to a directory
 that is located on your path.
 
+You will need to change the hardcoded path in ```rscripts/coverage_script.R```
+
+to point to your version of the file ```rscripts/coverage_plot.R```
+
 #### Python
 
 Python dependencies can be installed by running.
@@ -39,7 +43,9 @@ Navigate to ```src/AdapterRemoval/``` and run the following commands.
 Then ensure that the executable ```AdapterRemoval``` is on your path. 
 #### External dependencies.
 
-All the following executable must be accesible from your path.
+Unix tools ```realpath``` tool and ```zcat```
+
+All the following executables must be installed, and accesible from your path.
 
 - Muscle (http://www.drive5.com/muscle/)
 - R programming language (https://www.r-project.org/) with the packages
@@ -58,7 +64,7 @@ Navigate into the ```tests/test_data/``` directory and run the following command
     # run pipeline for human mtDNA. make sure you replace the path to the reference file. 
     ancient_pipeline.sh -C "gi|251831106|ref|NC_012920.1|" \
     -r ~/Programming/OpenSource/MyGitHub/ancient_dna_pipeline/ref/contamination.fa  \ 
-    -S "human" -t  -P 1
+    -S "human"  -P 1
     
 
 

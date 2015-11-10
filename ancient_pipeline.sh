@@ -237,10 +237,10 @@ if [[ $START_POS = 'MAP_READS' ]]; then
     echo "DONE STORE BAMS" >> .fin_pipeline
     index_bams
 fi
-##
-##
-##
-#SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
+#
+#
+#
+SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 merge_bams
 #remove_bad_samples
 #merge_the_same_samples
@@ -252,12 +252,12 @@ merge_bams
 # TODO COMPARE HaplotypeCaller and Samtools
 #call_variants_samtools
 echo $MAP_DAMAGE
-#if [[ $MAP_DAMAGE != "TRUE" ]]; then
-#    map_damage  
-#    echo "DONE MAP DAMAGE" >> .fin_pipeline 
-#    index_bams
-#    echo "DONE INDEX BAMS" >> .fin_pipeline
-#fi
+if [[ $MAP_DAMAGE != "TRUE" ]]; then
+    map_damage  
+    echo "DONE MAP DAMAGE" >> .fin_pipeline 
+    index_bams
+    echo "DONE INDEX BAMS" >> .fin_pipeline
+fi
 if [[ $PMD != "" ]]; then
     pmd
     echo "DONE PMD" >> .fin_pipeline
@@ -271,7 +271,7 @@ fi
 haplocaller_combine
 echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 #
-#coverage_plots_R
+coverage_plots_R
 #
 vcf_filter
 if [[ $IMPUTATION = "TRUE" ]]; then
@@ -294,7 +294,7 @@ echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 
 vcf_to_fasta
 ## VCF_to_fasta_before muscle
-#align_muscle
+align_muscle
 # Post-mortem damage 
 fasta_to_nexus
 if [[ $TRAITS_FILE != "" ]]; then
@@ -302,7 +302,6 @@ if [[ $TRAITS_FILE != "" ]]; then
 fi
 
 map_damage_filtered_plots
-##Clear this fucknig tmp_dir
 #
 #CLEAR_DIR="TRUE"
 #if [[ $CLEAR_DIR = "TRUE" ]]; then 
