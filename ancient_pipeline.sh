@@ -302,8 +302,5 @@ if [[ $TRAITS_FILE != "" ]]; then
 fi
 
 map_damage_filtered_plots
-#
-#CLEAR_DIR="TRUE"
-#if [[ $CLEAR_DIR = "TRUE" ]]; then 
-#    rm -Rf $tmp_dir
-#fi
+
+
