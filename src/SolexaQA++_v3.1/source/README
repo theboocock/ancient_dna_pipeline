@@ -1,0 +1,8 @@
+SolexaQA++ requires Boost libraries (http://www.boost.org/) and the Zlib library (www.zlib.net, usually installed by default on most Unix systems) in orderto be compiled.
+
+To compile SolexaQA++, just run:
+
+make
+
+In case the boost or zlib libraries are not found, please edit the BOOST_PATH and ZLIB path in the makefile (lines 4,5 for Windows; line 21 for Linux; line 35 for Mac).
+In Windows, it could also be necessary to edit the boost version number in line 9 (I used v.1_55)
