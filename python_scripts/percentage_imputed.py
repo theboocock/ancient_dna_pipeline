@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Takes a VCF file that is to be imputed into and tell you the number of sites and the total number of sites that are required to be imputed in each sampe
+# Takes a VCF file that is to be imputed into and tell you the number of sites and the total number of sites that will be attempted to be imputed in each sample
 # 
 #
 
@@ -18,7 +18,7 @@ def impute_table(vcf_input):
         snp_number += 1
         for sample in record.samples:
             genotype = sample['GT']
-            if(genotype is not None):
+            if(genotype is not None and genotype != "./."):
                 sample_count[sample.sample] += 1
     for sample, counts in sample_count.items():
         print sample, 1-float(counts)/snp_number

@@ -126,6 +126,9 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                 if not free_bayes:
                     genotype = genotype[0]
                 real_gt = str(alt[int(genotype)-1])
+                if real_gt == "*":
+                    sample_fasta[sample][temp_position] = "N"
+                    continue
                 if to_fasta:
                     if species == 'human':
                         if position == 8270 and ref == "CACCCCCTCT":

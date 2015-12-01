@@ -241,17 +241,17 @@ echo $MAP_DAMAGE
 ###
 ###
 ###
-##SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
+#SAM_SEARCH_EXPAND="${results_dir}/bams/*.bam"
 #merge_bams
-##remove_bad_samples
-##merge_the_same_samples
-#
-## TODO up until this point we are running single samples individually. 
-## Files may end up missing in the bams folder so need to be taken care
-## of before running into the next step
-##Run some map Damage
-## TODO COMPARE HaplotypeCaller and Samtools
-##call_variants_samtools
+#remove_bad_samples
+#merge_the_same_samples
+
+# TODO up until this point we are running single samples individually. 
+# Files may end up missing in the bams folder so need to be taken care
+# of before running into the next step
+#Run some map Damage
+# TODO COMPARE HaplotypeCaller and Samtools
+#call_variants_samtools
 #echo $MAP_DAMAGE
 ##if [[ $MAP_DAMAGE != "TRUE" ]]; then
 ##    map_damage  
@@ -269,18 +269,18 @@ echo $MAP_DAMAGE
 #    haplotype_caller
 #    echo "DONE HAPLOTYPECALLER" >>.fin_pipeline
 #fi
-#haplocaller_combine
+##haplocaller_combine
 #echo "DONE HAPLOCALLER COMBINE" >> .fin_pipeline
 ##
 ##coverage_plots_R
-##
-#vcf_filter
-#if [[ $IMPUTATION = "TRUE" ]]; then
-#   # Imputation consists of two distinct steps,
-#   # Recalling the VCF, then using that with beagle imputation
-#   #
-#    beagle_imputation
-#fi
+###
+##vcf_filter
+if [[ $IMPUTATION = "TRUE" ]]; then
+   # Imputation consists of two distinct steps,
+   # Recalling the VCF, then using that with beagle imputation
+   #
+    beagle_imputation
+fi
 #if [[ $MAP_DAMAGE != "" ]]; then
 #    contamination_percentage
 #    echo "DONE COVERAGE_PLOTS" >> .fin_pipeline
@@ -293,7 +293,7 @@ echo $MAP_DAMAGE
 #vcf_to_haplogrep
 #echo "DONE VCF HAPLOGREP" >> .fin_pipeline
 #
-#vcf_to_fasta
+vcf_to_fasta
 ### VCF_to_fasta_before muscle
 ##align_muscle
 ## Post-mortem damage 

@@ -85,7 +85,7 @@ vcf_filter(){
     vcf_output=$results_dir/$SETUP_FILE.raw.vcf
     vcf_input=$vcf_output 
     # Filter VCF removing samples having low coverage. 
-    samples_to_keep.py -m 10 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
+    samples_to_keep.py -m 90 -c $results_dir/coverage/coverage_data.txt -v $vcf_input -o tmp.vcf
     mv tmp.vcf $vcf_input
     $JAVA7 $XMX -jar $GATK \
         -T VariantFiltration \
@@ -292,7 +292,7 @@ beagle_imputation(){
         cat $results_dir/$SETUP_FILE.filter.vcf | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/g" | perl -pe "s/\t\.:/\t\.\/\.:/g" > $vcf_input
         echo "MERGED VARIANTS" 
         zero_info.py $vcf_input > tmp.tmp
-        cat tmp.tmp | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/g" | perl -pe "s/\t\.:/\t\.\/\.:/g" | perl -pe "s/\t3:/\t3\/3:/g" > $vcf_input
+        cat tmp.tmp | perl -pe  "s/\t0:/\t0\/0:/g"  | perl -pe "s/\t1:/\t1\/1:/g" | perl -pe "s/\t2:/\t2\/2:/g" | perl -pe "s/\t\.:/\t\.\/\.:/g" | perl -pe "s/\t3:/\t3\/3:/g" | perl -pe "s/\t4:/\t4\/4:/g" > $vcf_input
         #rm tmp.tmp 
         percentage_imputed.py $vcf_input | sort -k 1 > ${results_dir}/imputed_percentage.txt
     elif [[ PLOIDY = "2" ]]; then
@@ -336,6 +336,7 @@ do
             if [[ $MAP_DAMAGE = "" ]]; then
             echo $pe_one
             echo $pe_two
+            echo $reference
             # -M is essensetion for picard compatibility
             bwa mem -M -t $CORES $reference ${pe_one} ${pe_two} > $tmp_dir/$output.sam 2> $tmp_dir/$output.bwa.err
             else
