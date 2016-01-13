@@ -18,6 +18,8 @@ HAPLOTYPE_CALLER = """
     --emitRefConfidence GVCF
     -R {2} \
     -o {3} \
+    --variant_index_type LINEAR \
+    --variant_index_parameter 128000 \
     --sample_ploidy {4}
 """
 
@@ -168,6 +170,7 @@ def main():
     args = parser.parse_args()
     args.cores = int(args.cores)
     args.xmx = args.xmx.strip('"')
+    print args.bams
     genovcfs = haplotype_caller(gatk=args.gatk, xmx=args.xmx, cores=args.cores,
                                 bams=args.bams, reference=args.reference,
                                 out_directory=args.directory, ploidy=args.ploidy, bed_file=args.bed_file)
