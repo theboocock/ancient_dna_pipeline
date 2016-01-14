@@ -1,3 +1,12 @@
+""""
+    Haplotype caller template
+
+    {0} = GATK
+    {1} = Bam inut files
+    {2} = Reference genome
+    {3} = Ploidy level 
+
+"""
 HAPLOTYPE_CALLER = """
     java -jar {0} \
     {1} \
