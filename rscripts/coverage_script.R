@@ -36,7 +36,7 @@ if(!is.null(opt$directory_output)){
 }
 
 #TODO improve so we don't use a hardcoded path for the script
-source('~/scratch/matisoo_smith/ancient_dna_pipeline/rscripts/coverage_plot.R')
+source('~/ancient_dna_pipeline/rscripts/coverage_plot.R')
 coverage_plot(opt$coverage_file,opt$reference_fasta, opt$sample_name, opt$output_prefix,opt$total_coverage_file,opt$contamination_mapping)
 #source("~/scratch/matisoo_smith/ancient_dna_pipeline/rscripts/overall_coverage_script.R") 
 #read_length_plot(opt$coverage_file, opt$reference_fasta, opt$sample_name, opt$output_prefix, opt$total_coverage_file, opt$contamination_mapping)
