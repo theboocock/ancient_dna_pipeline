@@ -89,7 +89,7 @@ def haplotype_caller(gatk, xmx, reference, bams, cores, out_directory, ploidy, b
         commands.append(command)
         print command
         gvcfs.append(output)
-    queue_jobs(commands, "haplotypeCaller", cores)
+    #queue_jobs(commands, "haplotypeCaller", cores)
     return gvcfs
 
 SPLIT_SIZE = 100

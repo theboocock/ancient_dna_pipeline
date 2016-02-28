@@ -143,6 +143,10 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                             sample_fasta[sample][temp_position] = gt
                         elif len(real_gt) > len(ref) and i != 0:
                             if use_indels:
+                                if temp_position == 2677:
+                                    print real_gt
+                                    print ref 
+                                    print real_gt[i]
                                 gt = list(real_gt[i])
                                 sample_offset_end[sample][temp_position] = len(gt)
 
@@ -151,9 +155,6 @@ def vcf_to_fasta(input_vcf, output_fasta, ref_seq,
                                     sample_fasta[sample][:temp_position] + \
                                     gt + sample_fasta[sample][temp_position:]
                                 sample_offset[sample] += 1
-                            else:
-                                gt = real_gt[i]
-                                sample_fasta[sample][temp_position] = gt[0]
                         elif len(real_gt) < len(ref) and i != 0:
                             sample_fasta[sample][temp_position + i] = '-'
                 else:
