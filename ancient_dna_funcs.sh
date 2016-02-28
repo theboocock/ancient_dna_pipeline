@@ -120,9 +120,12 @@ map_damage_filtered_plots(){
 }
 
 map_damage(){
-    parallel --env PATH -j ${CORES} "mapDamage -i {} -d ${results_dir}/damage/{/.} --rescale -r ${reference}" ::: ${SAM_SEARCH_EXPAND}
-    parallel -j ${CORES} "cp {} ${tmp_dir}/" ::: ${results_dir}/damage/*/*bam
-    SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
+    # Skip map damage on test because it is very slow  # 
+    if [[ $TEST != "TRUE" ]]; then 
+        parallel --env PATH -j ${CORES} "mapDamage -i {} -d ${results_dir}/damage/{/.} --rescale -r ${reference}" ::: ${SAM_SEARCH_EXPAND}
+        parallel -j ${CORES} "cp {} ${tmp_dir}/" ::: ${results_dir}/damage/*/*bam
+        SAM_SEARCH_EXPAND=${tmp_dir}/*rescaled.bam
+    fi
 }
 pmd(){
     parallel --env PATH -j ${CORES} "samtools view -h {} | pmdtools.py --threshold 0 --header 2> {tmp_dir}/{/.}.pmd_stats.txt | samtools view -Sb - > ${tmp_dir}/{/.}.pmd_filter.bam"

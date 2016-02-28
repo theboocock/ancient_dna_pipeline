@@ -2,7 +2,7 @@
 # run the best practice gatk analysis for calling variants.
 
 get_options(){
-    while getopts "tC:AT:sI:i:pc:mMr:R:d:mhDb:P:S:" opt; do
+    while getopts "tC:AT:sI:i:pc:mMr:R:d:mhDb:P:S:x" opt; do
         case $opt in
         P)
             echo $OPTARG
@@ -43,6 +43,9 @@ get_options(){
             ;;
         s)
             START_POS=$OPTARG
+            ;;
+        x)
+            TEST="TRUE"
             ;;
         S)
             SPECIES=$OPTARG
