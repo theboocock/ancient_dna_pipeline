@@ -123,7 +123,7 @@ MAX_FILES=100
 MIN_DEPTH=2
 #Specify the number of cores to use
 CORES=6
-XMX=-Xmx16g
+XMX=-Xmx2g
 # JAVA7
 # mapper of choice either bwa of bowtie at the moment
 MAPPER=bwa
